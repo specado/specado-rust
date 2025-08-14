@@ -29,7 +29,7 @@ Specado is a spec-driven library for integrating Large Language Models (LLMs) in
 
 ### Prerequisites
 
-- Rust 1.75+
+- Rust 1.77+
 - Python 3.9+ (for Python bindings)
 - Node.js 16+ (for Node.js bindings)
 

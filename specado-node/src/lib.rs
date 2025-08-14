@@ -1,5 +1,5 @@
 //! Node.js bindings for Specado
-//! 
+//!
 //! This crate provides Node.js bindings for the Specado core library using N-API.
 
 use napi::bindgen_prelude::*;
@@ -18,7 +18,16 @@ pub fn version() -> Result<String> {
 }
 
 /// A more complex example showing async support
+#[cfg(not(test))]
 #[napi]
+pub async fn hello_world_async() -> Result<String> {
+    // Simulate async work
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    Ok(specado_core::hello_world())
+}
+
+/// Test version of async function
+#[cfg(test)]
 pub async fn hello_world_async() -> Result<String> {
     // Simulate async work
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -50,3 +59,4 @@ mod tests {
         assert_eq!(result.unwrap(), "Hello from Specado Core!");
     }
 }
+

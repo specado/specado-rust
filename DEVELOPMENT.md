@@ -43,13 +43,13 @@ This guide covers the development environment setup for the Specado project, inc
 
 3. Verify installation:
    ```bash
-   rustc --version  # Should be 1.75.0 or later
+   rustc --version  # Should be 1.77.0 or later
    cargo --version
    ```
 
 ### Required Rust Version
 
-- **Minimum**: 1.75.0
+- **Minimum**: 1.77.0
 - **Recommended**: Latest stable
 
 ### Rust Components

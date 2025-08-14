@@ -1,5 +1,5 @@
 //! Specado Core Library
-//! 
+//!
 //! This crate provides the core functionality for spec-driven LLM integration.
 
 use std::ffi::CString;
@@ -24,14 +24,17 @@ pub extern "C" fn specado_hello_world() -> *mut c_char {
 
 /// Frees a string that was allocated by Rust.
 /// This must be called on strings returned by `specado_hello_world`.
+/// 
+/// # Safety
+/// 
+/// This function is unsafe because it dereferences a raw pointer.
+/// The pointer must be valid and must have been allocated by `specado_hello_world`.
 #[no_mangle]
-pub extern "C" fn specado_free_string(s: *mut c_char) {
+pub unsafe extern "C" fn specado_free_string(s: *mut c_char) {
     if s.is_null() {
         return;
     }
-    unsafe {
-        let _ = CString::from_raw(s);
-    }
+    let _ = CString::from_raw(s);
 }
 
 /// Returns the version of the Specado Core library.
@@ -64,13 +67,14 @@ mod tests {
     fn test_ffi_hello_world() {
         let ptr = specado_hello_world();
         assert!(!ptr.is_null());
-        
+
         unsafe {
             let c_str = CStr::from_ptr(ptr);
             let rust_str = c_str.to_str().unwrap();
             assert_eq!(rust_str, "Hello from Specado Core!");
         }
-        
-        specado_free_string(ptr);
+
+        unsafe { specado_free_string(ptr); }
     }
 }
+
