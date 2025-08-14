@@ -1,0 +1,27 @@
+[package]
+name = "specado-python"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Python bindings for Specado"
+
+[lib]
+name = "specado"
+crate-type = ["cdylib"]
+
+[dependencies]
+specado-core = { path = "../specado-core" }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+
+[build-dependencies]
+pyo3-build-config = "0.22"
+
+[dev-dependencies]
+criterion = { workspace = true }

@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = [
+    "specado-core",
+    "specado-python",
+    "specado-node",
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Specado Contributors"]
+edition = "2021"
+rust-version = "1.75.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/specado/specado-rust"
+homepage = "https://github.com/specado/specado-rust"
+
+[workspace.dependencies]
+# Common dependencies across the workspace
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+anyhow = "1.0"
+tokio = { version = "1.35", features = ["full"] }
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Testing dependencies
+criterion = "0.5"
+proptest = "1.4"
+test-case = "3.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.test]
+opt-level = 0
+debug = true

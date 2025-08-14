@@ -1,0 +1,58 @@
+{
+  "name": "@specado/core",
+  "version": "0.1.0",
+  "description": "Node.js bindings for Specado - Spec-driven LLM integration library",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "specado",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "x86_64-unknown-linux-musl",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-unknown-linux-musl"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "node test_specado.js",
+    "universal": "napi universal",
+    "version": "napi version"
+  },
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/specado/specado-rust.git"
+  },
+  "keywords": [
+    "llm",
+    "ai",
+    "openai",
+    "anthropic",
+    "spec-driven",
+    "napi",
+    "rust",
+    "native"
+  ],
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node"
+  ]
+}
