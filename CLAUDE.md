@@ -7,7 +7,7 @@ Specado is a spec-driven LLM integration library with a Rust core and Python/Nod
 - **Organization**: specado
 - **Repository**: specado-rust
 - **GitHub URL**: https://github.com/specado/specado-rust
-- **Website**: https://specado.com
+- **Website**: https://www.specado.com
 - **Documentation**: https://docs.specado.com (coming soon)
 - **License**: Apache-2.0 (single license, not dual-licensed)
 
@@ -58,7 +58,7 @@ All Sprint 0 tasks have been completed:
 
 ## Important Notes
 - Always use Apache-2.0 license, never MIT
-- Domain is specado.com (not specado.io)
+- Domain is specado.com (only .com)
 - Minimum Rust version is 1.77.0 (not 1.75.0)
 - PyO3 version must be 0.23+ to avoid security vulnerabilities
 
