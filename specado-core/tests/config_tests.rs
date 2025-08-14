@@ -16,6 +16,9 @@ fn create_test_file(dir: &TempDir, name: &str, content: &str) -> PathBuf {
 
 #[test]
 fn test_load_valid_yaml_config() {
+    use std::env;
+    env::set_var("OPENAI_API_KEY", "test-key");
+    
     let yaml = r#"
 version: "0.1"
 providers:
@@ -48,10 +51,15 @@ routing:
     assert_eq!(config.providers.len(), 1);
     assert_eq!(config.providers[0].name, "openai");
     assert_eq!(config.providers[0].models.len(), 2);
+    
+    env::remove_var("OPENAI_API_KEY");
 }
 
 #[test]
 fn test_load_valid_json_config() {
+    use std::env;
+    env::set_var("ANTHROPIC_API_KEY", "test-key");
+    
     let json = r#"{
   "version": "0.1",
   "providers": [
@@ -83,6 +91,8 @@ fn test_load_valid_json_config() {
     let config = result.unwrap();
     assert_eq!(config.version, "0.1");
     assert_eq!(config.providers[0].name, "anthropic");
+    
+    env::remove_var("ANTHROPIC_API_KEY");
 }
 
 #[test]
@@ -272,6 +282,10 @@ routing:
 
 #[test]
 fn test_complex_valid_config() {
+    use std::env;
+    env::set_var("OPENAI_API_KEY", "test-key-1");
+    env::set_var("ANTHROPIC_API_KEY", "test-key-2");
+    
     let yaml = r#"
 version: "0.1"
 providers:
@@ -341,6 +355,9 @@ metadata:
     assert_eq!(config.routing.fallback.max_retries, 5);
     assert_eq!(config.connection.connect_timeout_ms, 5000);
     assert_eq!(config.defaults.temperature, 0.8);
+    
+    env::remove_var("OPENAI_API_KEY");
+    env::remove_var("ANTHROPIC_API_KEY");
 }
 
 #[test]
@@ -364,6 +381,139 @@ providers:
     
     let result = load_from_yaml(path);
     assert!(result.is_err()); // max_output_tokens > max_tokens
+}
+
+#[test]
+fn test_env_var_interpolation() {
+    use std::env;
+    
+    env::set_var("TEST_API_KEY", "sk-test-key-123");
+    
+    let yaml = r#"
+version: "0.1"
+providers:
+  - name: openai
+    type: openai
+    api_key: ${TEST_API_KEY}
+    base_url: https://api.openai.com/v1
+    models: []
+"#;
+    
+    let dir = TempDir::new().unwrap();
+    let path = create_test_file(&dir, "config.yaml", yaml);
+    
+    let result = load_from_yaml(path);
+    assert!(result.is_ok());
+    
+    let config = result.unwrap();
+    assert_eq!(config.providers[0].api_key, "sk-test-key-123");
+    
+    env::remove_var("TEST_API_KEY");
+}
+
+#[test]
+fn test_missing_env_var() {
+    let yaml = r#"
+version: "0.1"
+providers:
+  - name: openai
+    type: openai
+    api_key: ${MISSING_ENV_VAR}
+    base_url: https://api.openai.com/v1
+    models: []
+"#;
+    
+    let dir = TempDir::new().unwrap();
+    let path = create_test_file(&dir, "config.yaml", yaml);
+    
+    let result = load_from_yaml(path);
+    assert!(result.is_err());
+    
+    if let Err(ConfigError::EnvVarNotFound { var }) = result {
+        assert_eq!(var, "MISSING_ENV_VAR");
+    } else {
+        panic!("Expected EnvVarNotFound error");
+    }
+}
+
+#[test]
+fn test_no_enabled_providers() {
+    let yaml = r#"
+version: "0.1"
+providers:
+  - name: openai
+    type: openai
+    api_key: test
+    base_url: https://api.openai.com/v1
+    enabled: false
+    models: []
+"#;
+    
+    let dir = TempDir::new().unwrap();
+    let path = create_test_file(&dir, "config.yaml", yaml);
+    
+    let result = load_from_yaml(path);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_weighted_routing_positive_sum() {
+    let yaml = r#"
+version: "0.1"
+providers:
+  - name: openai
+    type: openai
+    api_key: test
+    base_url: https://api.openai.com/v1
+    enabled: true
+    models: []
+  - name: anthropic
+    type: anthropic
+    api_key: test2
+    base_url: https://api.anthropic.com/v1
+    enabled: false
+    models: []
+routing:
+  strategy: weighted
+  weights:
+    openai: 0.0
+"#;
+    
+    let dir = TempDir::new().unwrap();
+    let path = create_test_file(&dir, "config.yaml", yaml);
+    
+    let result = load_from_yaml(path);
+    assert!(result.is_err()); // Sum of weights is 0
+}
+
+#[test]
+fn test_cost_optimized_specific_error() {
+    let yaml = r#"
+version: "0.1"
+providers:
+  - name: openai
+    type: openai
+    api_key: test
+    base_url: https://api.openai.com/v1
+    models:
+      - id: gpt-4
+        max_tokens: 8192
+        default_temperature: 0.7
+        cost_per_1k_input: 0.01
+routing:
+  strategy: cost_optimized
+"#;
+    
+    let dir = TempDir::new().unwrap();
+    let path = create_test_file(&dir, "config.yaml", yaml);
+    
+    let result = load_from_yaml(path);
+    assert!(result.is_err());
+    
+    // Should specifically report missing cost_per_1k_output
+    if let Err(ConfigError::ValidationError(e)) = result {
+        assert!(e.field_path.contains("cost_per_1k_output"));
+    }
 }
 
 #[test]

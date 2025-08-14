@@ -3,6 +3,7 @@
 //! This module provides the configuration schema and validation for the Specado
 //! spec-driven LLM integration library.
 
+mod env;
 mod error;
 mod schema;
 mod validator;
@@ -26,13 +27,19 @@ pub fn load_from_yaml<P: AsRef<Path>>(path: P) -> Result<SpecadoConfig, ConfigEr
             source: e,
         })?;
     
-    let config: SpecadoConfig = serde_yaml::from_str(&content)
+    // Interpolate environment variables before parsing
+    let interpolated = env::interpolate_env_vars(&content)?;
+    
+    let mut config: SpecadoConfig = serde_yaml::from_str(&interpolated)
         .map_err(|e| ConfigError::ParseError {
             path: path.to_string_lossy().to_string(),
             line: e.location().map(|l| l.line()),
             column: e.location().map(|l| l.column()),
             message: e.to_string(),
         })?;
+    
+    // Additional interpolation for any remaining env vars
+    env::interpolate_config_env_vars(&mut config)?;
     
     // Use the validator for extended validation
     let validator = ConfigValidator::new();
@@ -49,13 +56,19 @@ pub fn load_from_json<P: AsRef<Path>>(path: P) -> Result<SpecadoConfig, ConfigEr
             source: e,
         })?;
     
-    let config: SpecadoConfig = serde_json::from_str(&content)
+    // Interpolate environment variables before parsing
+    let interpolated = env::interpolate_env_vars(&content)?;
+    
+    let mut config: SpecadoConfig = serde_json::from_str(&interpolated)
         .map_err(|e| ConfigError::ParseError {
             path: path.to_string_lossy().to_string(),
             line: Some(e.line()),
             column: Some(e.column()),
             message: e.to_string(),
         })?;
+    
+    // Additional interpolation for any remaining env vars
+    env::interpolate_config_env_vars(&mut config)?;
     
     // Use the validator for extended validation
     let validator = ConfigValidator::new();

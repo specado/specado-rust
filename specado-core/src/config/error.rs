@@ -140,6 +140,3 @@ impl ValidationError {
         )
     }
 }
-
-/// Result type for configuration operations
-pub type ConfigResult<T> = Result<T, ConfigError>;

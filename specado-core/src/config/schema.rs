@@ -416,12 +416,27 @@ impl Provider {
             return Err(ValidationError::required(format!("{}.base_url", path)));
         }
         
-        // Basic URL validation
-        if !self.base_url.starts_with("http://") && !self.base_url.starts_with("https://") {
-            return Err(ValidationError::invalid_format(
-                format!("{}.base_url", path),
-                "URL must start with http:// or https://",
-            ));
+        // Proper URL validation using url crate
+        match url::Url::parse(&self.base_url) {
+            Ok(url) => {
+                // Ensure it's HTTP or HTTPS
+                if url.scheme() != "http" && url.scheme() != "https" {
+                    return Err(ValidationError::new(
+                        format!("{}.base_url", path),
+                        ValidationErrorKind::InvalidUrl {
+                            message: format!("URL scheme must be http or https, got: {}", url.scheme()),
+                        },
+                    ));
+                }
+            }
+            Err(e) => {
+                return Err(ValidationError::new(
+                    format!("{}.base_url", path),
+                    ValidationErrorKind::InvalidUrl {
+                        message: e.to_string(),
+                    },
+                ));
+            }
         }
         
         // Validate models

@@ -69,6 +69,17 @@ impl ConfigValidator {
     fn validate_routing_strategy(&self, config: &SpecadoConfig) -> Result<(), ValidationError> {
         use super::schema::RoutingStrategy;
         
+        // First check that at least one provider is enabled
+        let enabled_count = config.providers.iter().filter(|p| p.enabled).count();
+        if enabled_count == 0 {
+            return Err(ValidationError::new(
+                "providers",
+                ValidationErrorKind::Custom {
+                    message: "At least one provider must be enabled".to_string(),
+                },
+            ));
+        }
+        
         match config.routing.strategy {
             RoutingStrategy::Weighted => {
                 // Weighted strategy requires weights to be defined
@@ -79,14 +90,29 @@ impl ConfigValidator {
                     ).with_context("Weighted routing strategy requires weights to be defined"));
                 }
                 
-                // All providers should have weights
+                // All enabled providers should have weights
+                let mut total_weight = 0.0;
                 for provider in &config.providers {
-                    if provider.enabled && !config.routing.weights.contains_key(&provider.name) {
-                        return Err(ValidationError::new(
-                            format!("routing.weights.{}", provider.name),
-                            ValidationErrorKind::RequiredFieldMissing,
-                        ).with_context("Weighted routing requires all enabled providers to have weights"));
+                    if provider.enabled {
+                        if let Some(weight) = config.routing.weights.get(&provider.name) {
+                            total_weight += weight;
+                        } else {
+                            return Err(ValidationError::new(
+                                format!("routing.weights.{}", provider.name),
+                                ValidationErrorKind::RequiredFieldMissing,
+                            ).with_context("Weighted routing requires all enabled providers to have weights"));
+                        }
                     }
+                }
+                
+                // Ensure total weight is positive
+                if total_weight <= 0.0 {
+                    return Err(ValidationError::new(
+                        "routing.weights",
+                        ValidationErrorKind::Custom {
+                            message: "Sum of weights for enabled providers must be positive".to_string(),
+                        },
+                    ));
                 }
             }
             RoutingStrategy::CostOptimized => {
@@ -94,11 +120,18 @@ impl ConfigValidator {
                 for (i, provider) in config.providers.iter().enumerate() {
                     if provider.enabled {
                         for (j, model) in provider.models.iter().enumerate() {
-                            if model.cost_per_1k_input.is_none() || model.cost_per_1k_output.is_none() {
+                            // Check for missing cost fields and report specific errors
+                            if model.cost_per_1k_input.is_none() {
                                 return Err(ValidationError::new(
-                                    format!("providers[{}].models[{}].cost_per_1k_*", i, j),
+                                    format!("providers[{}].models[{}].cost_per_1k_input", i, j),
                                     ValidationErrorKind::RequiredFieldMissing,
-                                ).with_context("Cost-optimized routing requires cost information for all models"));
+                                ).with_context("Cost-optimized routing requires input cost for all models"));
+                            }
+                            if model.cost_per_1k_output.is_none() {
+                                return Err(ValidationError::new(
+                                    format!("providers[{}].models[{}].cost_per_1k_output", i, j),
+                                    ValidationErrorKind::RequiredFieldMissing,
+                                ).with_context("Cost-optimized routing requires output cost for all models"));
                             }
                         }
                     }
