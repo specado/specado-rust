@@ -1,0 +1,95 @@
+//! Configuration module for Specado
+//! 
+//! This module provides the configuration schema and validation for the Specado
+//! spec-driven LLM integration library.
+
+mod error;
+mod schema;
+mod validator;
+
+pub use error::{ConfigError, ValidationError};
+pub use schema::{
+    SpecadoConfig, Provider, ProviderType, Model, RoutingStrategy, FallbackPolicy,
+    RetryPolicy, RateLimitConfig, ConnectionConfig
+};
+pub use validator::ConfigValidator;
+
+use std::path::Path;
+use std::fs;
+
+/// Load a configuration from a YAML file
+pub fn load_from_yaml<P: AsRef<Path>>(path: P) -> Result<SpecadoConfig, ConfigError> {
+    let path = path.as_ref();
+    let content = fs::read_to_string(path)
+        .map_err(|e| ConfigError::IoError {
+            path: path.to_string_lossy().to_string(),
+            source: e,
+        })?;
+    
+    let config: SpecadoConfig = serde_yaml::from_str(&content)
+        .map_err(|e| ConfigError::ParseError {
+            path: path.to_string_lossy().to_string(),
+            line: e.location().map(|l| l.line()),
+            column: e.location().map(|l| l.column()),
+            message: e.to_string(),
+        })?;
+    
+    // Use the validator for extended validation
+    let validator = ConfigValidator::new();
+    validator.validate(&config)?;
+    Ok(config)
+}
+
+/// Load a configuration from a JSON file
+pub fn load_from_json<P: AsRef<Path>>(path: P) -> Result<SpecadoConfig, ConfigError> {
+    let path = path.as_ref();
+    let content = fs::read_to_string(path)
+        .map_err(|e| ConfigError::IoError {
+            path: path.to_string_lossy().to_string(),
+            source: e,
+        })?;
+    
+    let config: SpecadoConfig = serde_json::from_str(&content)
+        .map_err(|e| ConfigError::ParseError {
+            path: path.to_string_lossy().to_string(),
+            line: Some(e.line()),
+            column: Some(e.column()),
+            message: e.to_string(),
+        })?;
+    
+    // Use the validator for extended validation
+    let validator = ConfigValidator::new();
+    validator.validate(&config)?;
+    Ok(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_valid_yaml() {
+        let yaml = r#"
+version: "0.1"
+providers:
+  - name: openai
+    type: openai
+    api_key: ${OPENAI_API_KEY}
+    base_url: https://api.openai.com/v1
+    models:
+      - id: gpt-4
+        max_tokens: 8192
+        default_temperature: 0.7
+      - id: gpt-3.5-turbo
+        max_tokens: 4096
+        default_temperature: 0.7
+routing:
+  strategy: round_robin
+  fallback:
+    enabled: true
+    max_retries: 3
+"#;
+        let config: Result<SpecadoConfig, _> = serde_yaml::from_str(yaml);
+        assert!(config.is_ok());
+    }
+}
