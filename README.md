@@ -1,7 +1,6 @@
 # Specado
 
 [![CI](https://github.com/specado/specado-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/specado/specado-rust/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Spec-driven LLM integration library with Rust core and Python/Node.js bindings.
@@ -183,16 +182,11 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) (
 
 ## License
 
-This project is dual-licensed under:
-
-- MIT License ([LICENSE-MIT](LICENSE-MIT))
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-
-You may choose either license for your use case.
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Documentation**: [docs.specado.io](https://docs.specado.io) (coming soon)
+- **Documentation**: [docs.specado.com](https://docs.specado.com) (coming soon)
 - **Issues**: [GitHub Issues](https://github.com/specado/specado-rust/issues)
 - **Discord**: [Join our community](https://discord.gg/specado) (coming soon)
 

@@ -437,7 +437,7 @@ npm install -g windows-build-tools
 1. Check the [GitHub Issues](https://github.com/specado/specado-rust/issues)
 2. Read the [API Documentation](https://docs.rs/specado)
 3. Join our [Discord Server](https://discord.gg/specado) (if available)
-4. Email the maintainers: dev@specado.io
+4. Email the maintainers: dev@specado.com
 
 ## Additional Resources
 

@@ -10,11 +10,10 @@ authors = [
     { name = "Specado Contributors", email = "team@specado.dev" }
 ]
 readme = "README.md"
-license = { text = "MIT OR Apache-2.0" }
+license = { text = "Apache-2.0" }
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
