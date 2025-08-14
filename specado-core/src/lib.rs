@@ -24,9 +24,9 @@ pub extern "C" fn specado_hello_world() -> *mut c_char {
 
 /// Frees a string that was allocated by Rust.
 /// This must be called on strings returned by `specado_hello_world`.
-/// 
+///
 /// # Safety
-/// 
+///
 /// This function is unsafe because it dereferences a raw pointer.
 /// The pointer must be valid and must have been allocated by `specado_hello_world`.
 #[no_mangle]
@@ -74,7 +74,8 @@ mod tests {
             assert_eq!(rust_str, "Hello from Specado Core!");
         }
 
-        unsafe { specado_free_string(ptr); }
+        unsafe {
+            specado_free_string(ptr);
+        }
     }
 }
-

@@ -18,19 +18,9 @@ pub fn version() -> Result<String> {
 }
 
 /// A more complex example showing async support
-#[cfg(not(test))]
 #[napi]
 pub async fn hello_world_async() -> Result<String> {
-    // Simulate async work
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    Ok(specado_core::hello_world())
-}
-
-/// Test version of async function
-#[cfg(test)]
-pub async fn hello_world_async() -> Result<String> {
-    // Simulate async work
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    // For Sprint 0, just return the result without actual async work
     Ok(specado_core::hello_world())
 }
 
@@ -52,11 +42,13 @@ mod tests {
         assert!(!result.unwrap().is_empty());
     }
 
-    #[tokio::test]
-    async fn test_hello_world_async() {
-        let result = hello_world_async().await;
+    #[test]
+    fn test_hello_world_async() {
+        // For Sprint 0, we'll test the async function synchronously
+        // since it doesn't actually do async work yet
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let result = runtime.block_on(hello_world_async());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Hello from Specado Core!");
     }
 }
-
