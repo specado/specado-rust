@@ -68,13 +68,12 @@ jobs:
       
       - name: Build Python module
         working-directory: specado-python
-        run: maturin build
+        run: maturin build --release
       
       - name: Test Python FFI
-        working-directory: specado-python
         run: |
           pip install target/wheels/*.whl
-          python test_specado.py
+          cd specado-python && python test_specado.py
 
   # Build and test Node.js bindings
   test-node:
