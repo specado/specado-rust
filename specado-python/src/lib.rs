@@ -3,7 +3,7 @@
 //! This crate provides Python bindings for the Specado core library using PyO3 v0.25.1.
 
 use pyo3::prelude::*;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError, PyTypeError};
 use pyo3::types::{PyDict, PyList};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,6 +14,26 @@ use specado_core::providers::{
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+/// Structured error types for better error reporting
+#[derive(Debug)]
+enum SpecadoError {
+    ProviderError(String),
+    ConfigurationError(String),
+    RuntimeError(String),
+    MessageFormatError(String),
+}
+
+impl From<SpecadoError> for PyErr {
+    fn from(err: SpecadoError) -> PyErr {
+        match err {
+            SpecadoError::ProviderError(msg) => PyRuntimeError::new_err(format!("Provider error: {}", msg)),
+            SpecadoError::ConfigurationError(msg) => PyValueError::new_err(format!("Configuration error: {}", msg)),
+            SpecadoError::RuntimeError(msg) => PyRuntimeError::new_err(format!("Runtime error: {}", msg)),
+            SpecadoError::MessageFormatError(msg) => PyTypeError::new_err(format!("Message format error: {}", msg)),
+        }
+    }
+}
 
 /// Python-compatible message structure
 #[pyclass(module = "specado")]
@@ -180,22 +200,23 @@ impl ChatCompletions {
     ) -> PyResult<ChatCompletionResponse> {
         let router = self.router.clone();
         
-        // Convert Python messages to core messages
-        let core_messages: Vec<CoreMessage> = messages
+        // Convert Python messages to core messages with proper error handling
+        let core_messages: PyResult<Vec<CoreMessage>> = messages
             .iter()
             .map(|msg| {
                 let msg_ref = msg.bind(py);
-                let role = msg_ref.getattr("role").unwrap().extract::<String>().unwrap();
-                let content = msg_ref.getattr("content").unwrap().extract::<String>().unwrap();
+                let role = msg_ref.getattr("role")?.extract::<String>()?;
+                let content = msg_ref.getattr("content")?.extract::<String>()?;
                 
-                match role.as_str() {
+                Ok(match role.as_str() {
                     "system" => CoreMessage::system(&content),
                     "user" => CoreMessage::user(&content),
                     "assistant" => CoreMessage::assistant(&content),
                     _ => CoreMessage::user(&content), // Default to user
-                }
+                })
             })
             .collect();
+        let core_messages = core_messages?;
         
         // Create chat request
         let mut request = CoreChatRequest::new(&model, core_messages);
@@ -209,13 +230,13 @@ impl ChatCompletions {
         // Execute async operation in blocking manner
         // In production, we'd use pyo3-asyncio for proper async support
         let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| PyRuntimeError::new_err(format!("Failed to create runtime: {}", e)))?;
+            .map_err(|e| SpecadoError::RuntimeError(format!("Failed to create runtime: {}", e)))?;
         
         let request_model = request.model.clone();
         let result = runtime.block_on(async move {
             let router_guard = router.lock().await;
             router_guard.route(request).await
-        }).map_err(|e| PyRuntimeError::new_err(format!("Routing failed: {}", e)))?;
+        }).map_err(|e| SpecadoError::ProviderError(format!("Routing failed: {}", e)))?;
         
         // Create extensions
         let extensions = Py::new(py, Extensions {
@@ -309,15 +330,25 @@ impl Client {
     #[new]
     #[pyo3(signature = (config=None))]
     fn new(py: Python, config: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
-        // Parse configuration
+        // Parse configuration with proper type handling
         let config_map = if let Some(cfg) = config {
-            let mut map = HashMap::new();
-            for (key, value) in cfg.iter() {
-                let key_str = key.extract::<String>()?;
-                let val_str = value.to_string();
-                map.insert(key_str, Value::String(val_str));
-            }
-            map
+            cfg.iter()
+                .map(|(k, v)| {
+                    let key = k.extract::<String>()?;
+                    let value = if let Ok(s) = v.extract::<String>() {
+                        Value::String(s)
+                    } else if let Ok(b) = v.extract::<bool>() {
+                        Value::Bool(b)
+                    } else if let Ok(i) = v.extract::<i64>() {
+                        Value::Number(serde_json::Number::from(i))
+                    } else if let Ok(f) = v.extract::<f64>() {
+                        Value::Number(serde_json::Number::from_f64(f).unwrap_or(serde_json::Number::from(0)))
+                    } else {
+                        Value::String(v.to_string())
+                    };
+                    Ok((key, value))
+                })
+                .collect::<PyResult<HashMap<_, _>>>()?
         } else {
             HashMap::new()
         };
