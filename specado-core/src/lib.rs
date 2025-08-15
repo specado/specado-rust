@@ -4,6 +4,7 @@
 
 pub mod config;
 pub mod protocol;
+pub mod providers;
 
 use std::ffi::CString;
 use std::os::raw::c_char;
