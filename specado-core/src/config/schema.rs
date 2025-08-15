@@ -46,7 +46,6 @@ pub struct Provider {
     pub provider_type: ProviderType,
 
     /// API key (supports environment variable interpolation)
-    #[serde(deserialize_with = "deserialize_secret_string")]
     pub api_key: SecretString,
 
     /// Base URL for the provider API
@@ -360,15 +359,6 @@ fn default_keepalive() -> u64 {
 }
 fn default_max_tokens() -> usize {
     2048
-}
-
-/// Custom deserializer for SecretString
-fn deserialize_secret_string<'de, D>(deserializer: D) -> Result<SecretString, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    Ok(SecretString::from(s))
 }
 
 impl fmt::Debug for Provider {

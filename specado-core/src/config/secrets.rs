@@ -6,30 +6,11 @@
 //! - Safe logging utilities
 //! - Serialization with redaction
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Marker trait for types that contain sensitive data
-#[allow(dead_code)]
-pub trait ContainsSensitiveData {
-    /// Returns true if this type contains any sensitive data
-    fn contains_sensitive_data(&self) -> bool {
-        true // Conservative default
-    }
-
-    /// Returns a redacted version suitable for logging
-    fn redact(&self) -> String {
-        "[REDACTED]".to_string()
-    }
-
-    /// Returns a partially redacted version showing some info
-    fn partial_redact(&self) -> String {
-        self.redact() // Default to full redaction
-    }
-}
-
 /// A wrapper type for sensitive strings like API keys
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct SecretString {
     value: String,
@@ -89,26 +70,6 @@ impl fmt::Display for SecretString {
     }
 }
 
-impl Serialize for SecretString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // When serializing for logs or output, always redact
-        // For actual config writing, use a different method
-        serializer.serialize_str("[REDACTED]")
-    }
-}
-
-impl ContainsSensitiveData for SecretString {
-    fn redact(&self) -> String {
-        "[REDACTED]".to_string()
-    }
-
-    fn partial_redact(&self) -> String {
-        self.partial_redact()
-    }
-}
 
 impl PartialEq for SecretString {
     fn eq(&self, other: &Self) -> bool {
@@ -174,20 +135,6 @@ pub fn get_redaction_policy() -> RedactionPolicy {
     unsafe { REDACTION_POLICY }
 }
 
-/// A macro for safe logging with automatic redaction
-#[macro_export]
-macro_rules! safe_log {
-    ($level:expr, $($arg:tt)*) => {
-        match $level {
-            "error" => log::error!($($arg)*),
-            "warn" => log::warn!($($arg)*),
-            "info" => log::info!($($arg)*),
-            "debug" => log::debug!($($arg)*),
-            "trace" => log::trace!($($arg)*),
-            _ => log::info!($($arg)*),
-        }
-    };
-}
 
 /// Redact a string based on field name patterns
 pub fn redact_by_field_name(field_name: &str, value: &str) -> String {
