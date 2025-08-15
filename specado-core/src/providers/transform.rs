@@ -3,8 +3,8 @@
 //! This module implements the core transformation logic that converts requests
 //! between different provider formats while tracking what information is lost.
 
-use crate::protocol::types::{ChatRequest, ChatResponse, Message, MessageRole, MessageContent, ResponseFormat};
-use crate::providers::adapter::{Provider, ProviderCapabilities};
+use crate::protocol::types::{ChatRequest, Message, MessageRole, MessageContent, ResponseFormat};
+use crate::providers::adapter::Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -56,7 +56,8 @@ impl LossinessReason {
 
 /// Core transformation engine
 pub struct TransformationEngine {
-    /// Source provider
+    /// Source provider (for future use in bidirectional transforms)
+    #[allow(dead_code)]
     source_provider: Box<dyn Provider>,
     
     /// Target provider
@@ -73,7 +74,7 @@ impl TransformationEngine {
     }
     
     /// Transform a request from source to target format
-    pub fn transform_request(&self, mut request: ChatRequest) -> TransformResult {
+    pub fn transform_request(&self, request: ChatRequest) -> TransformResult {
         let mut lossy = false;
         let mut reasons = Vec::new();
         let target_caps = self.target_provider.capabilities();

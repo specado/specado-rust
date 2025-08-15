@@ -3,7 +3,7 @@
 //! Implements the Provider trait for Anthropic's Claude API.
 //! Handles the differences in message format and capabilities.
 
-use crate::protocol::types::{ChatRequest, ChatResponse, Message, MessageRole, MessageContent};
+use crate::protocol::types::{ChatRequest, ChatResponse, Message, MessageRole};
 use crate::providers::adapter::{Provider, ProviderCapabilities};
 use std::collections::HashMap;
 use serde_json::Value;
