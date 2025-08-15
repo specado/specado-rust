@@ -1,0 +1,261 @@
+name: Publish Python Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: 'Publish to Test PyPI instead of PyPI'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+    
+    - name: Install maturin
+      run: pip install maturin
+    
+    - name: Build wheels (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      uses: PyO3/maturin-action@v1
+      with:
+        target: x86_64
+        args: --release --out dist --manifest-path specado-python/Cargo.toml
+        sccache: 'true'
+        manylinux: auto
+        
+    - name: Build wheels (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: PyO3/maturin-action@v1
+      with:
+        target: x64
+        args: --release --out dist --manifest-path specado-python/Cargo.toml
+        sccache: 'true'
+        
+    - name: Build wheels (macOS)
+      if: matrix.os == 'macos-latest'
+      uses: PyO3/maturin-action@v1
+      with:
+        target: universal2-apple-darwin
+        args: --release --out dist --manifest-path specado-python/Cargo.toml
+        sccache: 'true'
+    
+    - name: Upload wheels
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheels-${{ matrix.os }}
+        path: dist
+
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Build sdist
+      uses: PyO3/maturin-action@v1
+      with:
+        command: sdist
+        args: --out dist --manifest-path specado-python/Cargo.toml
+    
+    - name: Upload sdist
+      uses: actions/upload-artifact@v3
+      with:
+        name: sdist
+        path: dist
+
+  test-wheels:
+    name: Test wheels
+    needs: [build-wheels, build-sdist]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Download wheels
+      uses: actions/download-artifact@v3
+      with:
+        name: wheels-${{ matrix.os }}
+        path: dist
+    
+    - name: Install wheel
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        wheel_file=$(ls dist/*.whl | head -1)
+        pip install "$wheel_file"
+    
+    - name: Test installation
+      run: |
+        python -c "
+        import specado
+        from specado import Client, Message
+        
+        # Test version
+        version = specado.version()
+        print(f'Specado version: {version}')
+        
+        # Test basic functionality
+        client = Client()
+        msg = Message('user', 'test')
+        print('Basic functionality test passed')
+        
+        # Test API structure
+        assert hasattr(client, 'chat')
+        assert hasattr(client.chat, 'completions')
+        assert hasattr(client.chat.completions, 'create')
+        print('API structure test passed')
+        "
+
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    needs: build-wheels
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Download wheels
+      uses: actions/download-artifact@v3
+      with:
+        name: wheels-ubuntu-latest
+        path: dist
+    
+    - name: Install security tools
+      run: |
+        pip install safety bandit twine
+    
+    - name: Check wheel with twine
+      run: |
+        twine check dist/*
+    
+    - name: Security scan with safety (if requirements exist)
+      run: |
+        if [ -f "specado-python/requirements.txt" ]; then
+          safety check -r specado-python/requirements.txt
+        else
+          echo "No requirements.txt found, skipping safety check"
+        fi
+    
+    - name: Bandit security scan
+      run: |
+        bandit -r specado-python/src/ -f json -o bandit-report.json || true
+        if [ -f bandit-report.json ]; then
+          echo "Bandit scan completed"
+          cat bandit-report.json
+        fi
+
+  publish:
+    name: Publish to PyPI
+    needs: [test-wheels, security-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/specado
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: dist-artifacts
+    
+    - name: Combine artifacts
+      run: |
+        mkdir -p dist
+        find dist-artifacts -name "*.whl" -exec cp {} dist/ \;
+        find dist-artifacts -name "*.tar.gz" -exec cp {} dist/ \;
+        ls -la dist/
+    
+    - name: Publish to Test PyPI
+      if: github.event.inputs.test_pypi == 'true'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        packages-dir: dist/
+    
+    - name: Publish to PyPI
+      if: github.event.inputs.test_pypi != 'true'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
+
+  create-release-notes:
+    name: Create Release Notes
+    needs: publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract changelog
+      run: |
+        # Extract changelog section for this version
+        VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
+        echo "Extracting changelog for version $VERSION"
+        
+        # Create release notes from changelog
+        if [ -f "specado-python/CHANGELOG.md" ]; then
+          echo "Found changelog, extracting release notes..."
+          # This is a simple extraction - could be enhanced
+          head -50 specado-python/CHANGELOG.md > release-notes.md
+        else
+          echo "No changelog found, creating basic release notes..."
+          echo "## Specado Python $VERSION" > release-notes.md
+          echo "" >> release-notes.md
+          echo "This release includes improvements to the Specado Python bindings." >> release-notes.md
+        fi
+    
+    - name: Update release with changelog
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: release-notes.md
+        files: |
+          dist/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

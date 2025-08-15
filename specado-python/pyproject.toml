@@ -4,13 +4,16 @@ build-backend = "maturin"
 
 [project]
 name = "specado"
-version = "0.1.0"
-description = "Spec-driven LLM integration library"
+description = "Spec-driven LLM integration library with automatic fallback routing and provider transformations"
 authors = [
     { name = "Specado Contributors", email = "team@specado.dev" }
 ]
 readme = "README.md"
 license = { text = "Apache-2.0" }
+keywords = [
+    "llm", "artificial-intelligence", "openai", "anthropic", "api", 
+    "routing", "fallback", "transformation", "chat-completion"
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -21,10 +24,21 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Rust",
-    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Operating System :: OS Independent",
 ]
 requires-python = ">=3.9"
 dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/specado/specado-rust"
+Repository = "https://github.com/specado/specado-rust"
+Documentation = "https://docs.specado.com"
+Issues = "https://github.com/specado/specado-rust/issues"
+Changelog = "https://github.com/specado/specado-rust/blob/main/specado-python/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

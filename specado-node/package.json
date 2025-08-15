@@ -1,55 +1,120 @@
 {
   "name": "@specado/core",
   "version": "0.1.0",
-  "description": "Node.js bindings for Specado - Spec-driven LLM integration library",
+  "description": "High-performance Node.js bindings for Specado - Spec-driven LLM integration library with automatic fallback routing and provider transformations",
   "main": "index.js",
   "types": "index.d.ts",
+  "author": {
+    "name": "Specado Team",
+    "email": "hello@specado.com",
+    "url": "https://specado.com"
+  },
+  "homepage": "https://github.com/specado/specado-rust#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/specado/specado-rust.git",
+    "directory": "specado-node"
+  },
+  "bugs": {
+    "url": "https://github.com/specado/specado-rust/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/specado"
+  },
   "napi": {
     "binaryName": "specado",
+    "packageName": "@specado/core",
     "targets": [
       "x86_64-apple-darwin",
       "aarch64-apple-darwin",
       "x86_64-unknown-linux-gnu",
       "x86_64-unknown-linux-musl",
       "aarch64-unknown-linux-gnu",
-      "aarch64-unknown-linux-musl"
+      "aarch64-unknown-linux-musl",
+      "x86_64-pc-windows-msvc",
+      "aarch64-pc-windows-msvc"
     ]
   },
   "engines": {
-    "node": ">= 16"
+    "node": ">= 16.0.0"
   },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "scripts": {
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
+    "build:dev": "napi build --platform --release --js false --dts false",
+    "build:universal": "napi universal",
+    "clean": "rimraf target artifacts npm dist *.tgz *.node",
+    "format": "prettier --write .",
+    "lint": "eslint . --ext .js,.ts,.json --fix",
+    "prepack": "napi prepublish -t npm && npm run build",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "node test_specado.js",
-    "universal": "napi universal",
-    "version": "napi version"
+    "test:ci": "npm test",
+    "verify": "node scripts/verify-build.js",
+    "version": "napi version && git add .",
+    "watch": "napi build --platform --watch"
   },
   "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/specado/specado-rust.git"
-  },
   "keywords": [
     "llm",
-    "ai",
+    "large-language-model",
+    "artificial-intelligence",
     "openai",
     "anthropic",
+    "claude",
+    "gpt",
+    "api",
     "spec-driven",
+    "fallback",
+    "routing",
+    "transformation",
+    "chat-completion",
     "napi",
     "rust",
-    "native"
+    "native",
+    "high-performance",
+    "bindings",
+    "typescript"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "devDependencies": {
     "@napi-rs/cli": "^3.1.4",
     "@types/node": "^24.3.0",
+    "eslint": "^9.15.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^6.0.0",
     "typescript": "^5.7.2"
   },
   "files": [
     "index.js",
     "index.d.ts",
-    "*.node"
-  ]
+    "*.node",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "optionalDependencies": {
+    "@specado/core-darwin-x64": "0.1.0",
+    "@specado/core-darwin-arm64": "0.1.0",
+    "@specado/core-linux-x64-gnu": "0.1.0",
+    "@specado/core-linux-x64-musl": "0.1.0",
+    "@specado/core-linux-arm64-gnu": "0.1.0",
+    "@specado/core-linux-arm64-musl": "0.1.0",
+    "@specado/core-win32-x64-msvc": "0.1.0",
+    "@specado/core-win32-arm64-msvc": "0.1.0"
+  }
 }
