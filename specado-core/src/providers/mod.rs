@@ -8,6 +8,7 @@ pub mod adapter;
 pub mod transform;
 pub mod openai;
 pub mod anthropic;
+pub mod routing;
 
 pub use adapter::{Provider, ProviderCapabilities, ProviderType};
 pub use transform::{TransformResult, TransformationEngine, LossinessReason, transform_request};
@@ -15,3 +16,6 @@ pub use transform::{TransformResult, TransformationEngine, LossinessReason, tran
 // Re-export concrete providers
 pub use openai::OpenAIProvider;
 pub use anthropic::AnthropicProvider;
+
+// Re-export routing types
+pub use routing::{RoutingStrategy, PrimaryWithFallbacks, RoutingResult, ProviderError, RoutingBuilder};
