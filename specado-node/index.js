@@ -310,8 +310,12 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { helloWorld, version, helloWorldAsync } = nativeBinding
+const { createMessage, ChatCompletions, Chat, Client, version, helloWorld, helloWorld } = nativeBinding
 
-module.exports.helloWorld = helloWorld
+module.exports.createMessage = createMessage
+module.exports.ChatCompletions = ChatCompletions
+module.exports.Chat = Chat
+module.exports.Client = Client
 module.exports.version = version
-module.exports.helloWorldAsync = helloWorldAsync
+module.exports.helloWorld = helloWorld
+module.exports.helloWorld = helloWorld
