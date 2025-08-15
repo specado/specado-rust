@@ -411,13 +411,13 @@ pub struct ToolCallDelta {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompletionUsage {
     /// Tokens in the prompt
-    pub prompt_tokens: usize,
+    pub prompt_tokens: u32,
 
     /// Tokens in the completion
-    pub completion_tokens: usize,
+    pub completion_tokens: u32,
 
     /// Total tokens used
-    pub total_tokens: usize,
+    pub total_tokens: u32,
 }
 
 // ============================================================================
@@ -460,11 +460,24 @@ pub struct MessageBuilder {
 }
 
 impl MessageBuilder {
-    /// Create a new message builder with role and content
+    /// Create a new message builder with role and text content
     pub fn new(role: MessageRole, content: impl Into<String>) -> Self {
         Self {
             role,
             content: MessageContent::Text(content.into()),
+            name: None,
+            function_call: None,
+            tool_calls: None,
+            tool_call_id: None,
+            metadata: HashMap::new(),
+        }
+    }
+
+    /// Create a new message builder with role and multimodal parts
+    pub fn with_parts(role: MessageRole, parts: Vec<ContentPart>) -> Self {
+        Self {
+            role,
+            content: MessageContent::Parts(parts),
             name: None,
             function_call: None,
             tool_calls: None,
@@ -591,6 +604,24 @@ impl ChatRequest {
     /// Set max tokens
     pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
         self.max_tokens = Some(max_tokens);
+        self
+    }
+
+    /// Set top_p for nucleus sampling
+    pub fn with_top_p(mut self, top_p: f32) -> Self {
+        self.top_p = Some(top_p);
+        self
+    }
+
+    /// Set stop sequences
+    pub fn with_stop(mut self, stop: Vec<String>) -> Self {
+        self.stop = Some(stop);
+        self
+    }
+
+    /// Add a single stop sequence
+    pub fn with_stop_sequence(mut self, stop: impl Into<String>) -> Self {
+        self.stop.get_or_insert_with(Vec::new).push(stop.into());
         self
     }
 }

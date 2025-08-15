@@ -39,13 +39,25 @@ let tool_msg = Message::tool("call_123", "Weather retrieved successfully");
 ### MessageBuilder
 For complex message construction:
 ```rust
-use specado_core::protocol::{MessageBuilder, MessageRole};
+use specado_core::protocol::{MessageBuilder, MessageRole, ContentPart};
 
+// Text message with metadata
 let message = MessageBuilder::new(MessageRole::Assistant, "Processing your request")
     .with_name("assistant_1")
     .with_function_call("calculate", r#"{"operation": "sum", "values": [1, 2, 3]}"#)
     .with_metadata("provider", serde_json::json!("openai"))
     .build();
+
+// Multimodal message with parts
+let multimodal = MessageBuilder::with_parts(MessageRole::User, vec![
+    ContentPart::Text { text: "Analyze this chart:".to_string() },
+    ContentPart::Image { 
+        url: Some("https://example.com/chart.png".to_string()),
+        base64: None,
+    },
+])
+.with_name("user_123")
+.build();
 ```
 
 ### ChatRequest
@@ -59,6 +71,8 @@ let request = ChatRequest::new("gpt-4", vec![
 ])
 .with_temperature(0.7)
 .with_max_tokens(1000)
+.with_top_p(0.9)  // Nucleus sampling
+.with_stop_sequence("END")  // Stop generation at "END"
 .with_streaming(true);  // Enable streaming with usage tracking
 ```
 
