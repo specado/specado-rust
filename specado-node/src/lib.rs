@@ -329,14 +329,8 @@ pub fn version() -> Result<String> {
 }
 
 /// Returns a hello world message from the Specado core library.
-#[napi]
-pub fn hello_world() -> Result<String> {
-    Ok(specado_core::hello_world())
-}
-
-/// Returns a hello world message from the Specado core library (alternative export name).
 #[napi(js_name = "helloWorld")]
-pub fn hello_world_camel() -> Result<String> {
+pub fn hello_world() -> Result<String> {
     Ok(specado_core::hello_world())
 }
 

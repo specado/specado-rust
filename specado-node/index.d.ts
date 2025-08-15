@@ -36,8 +36,6 @@ export interface ChatCompletionResponse {
 export declare function version(): string
 /** Returns a hello world message from the Specado core library. */
 export declare function helloWorld(): string
-/** Returns a hello world message from the Specado core library (alternative export name). */
-export declare function helloWorld(): string
 /** Chat completions API interface */
 export declare class ChatCompletions {
   /** Create a chat completion (async native to Node.js) */
