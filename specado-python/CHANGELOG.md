@@ -62,9 +62,9 @@ This release represents the Week 2 MVP of the Specado project, focusing on:
 - Basic retry policies (advanced circuit breakers planned)
 
 ## Links
-- [Repository](https://github.com/specado/specado-rust)
-- [Issues](https://github.com/specado/specado-rust/issues)
+- [Repository](https://github.com/specado/specado)
+- [Issues](https://github.com/specado/specado/issues)
 - [Documentation](https://docs.specado.com)
 
-[Unreleased]: https://github.com/specado/specado-rust/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/specado/specado-rust/releases/tag/v0.1.0
+[Unreleased]: https://github.com/specado/specado/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/specado/specado/releases/tag/v0.1.0

@@ -34,11 +34,11 @@ dependencies = []
 dynamic = ["version"]
 
 [project.urls]
-Homepage = "https://github.com/specado/specado-rust"
-Repository = "https://github.com/specado/specado-rust"
+Homepage = "https://github.com/specado/specado"
+Repository = "https://github.com/specado/specado"
 Documentation = "https://docs.specado.com"
-Issues = "https://github.com/specado/specado-rust/issues"
-Changelog = "https://github.com/specado/specado-rust/blob/main/specado-python/CHANGELOG.md"
+Issues = "https://github.com/specado/specado/issues"
+Changelog = "https://github.com/specado/specado/blob/main/specado-python/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

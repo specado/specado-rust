@@ -1,6 +1,6 @@
 # Specado
 
-[![CI](https://github.com/specado/specado-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/specado/specado-rust/actions/workflows/ci.yml)
+[![CI](https://github.com/specado/specado/actions/workflows/ci.yml/badge.svg)](https://github.com/specado/specado/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Spec-driven LLM integration library with Rust core and Python/Node.js bindings.
@@ -79,7 +79,7 @@ console.log(`Specado version: ${version}`);
 ### Project Structure
 
 ```
-specado-rust/
+specado/
 ├── specado-core/       # Rust core library
 ├── specado-python/     # Python bindings (PyO3)
 ├── specado-node/       # Node.js bindings (N-API)
@@ -91,8 +91,8 @@ specado-rust/
 
 ```bash
 # Clone the repository
-git clone https://github.com/specado/specado-rust.git
-cd specado-rust
+git clone https://github.com/specado/specado.git
+cd specado
 
 # Build all components
 cargo build --all
@@ -127,8 +127,8 @@ npm test
 ## Project Management
 
 - **Project Board**: [Specado MVP Implementation](https://github.com/orgs/specado/projects/6)
-- **Issues**: [GitHub Issues](https://github.com/specado/specado-rust/issues)
-- **Milestones**: [Sprint Planning](https://github.com/specado/specado-rust/milestones)
+- **Issues**: [GitHub Issues](https://github.com/specado/specado/issues)
+- **Milestones**: [Sprint Planning](https://github.com/specado/specado/milestones)
 
 ### Current Sprint: Sprint 0 - Foundations
 
@@ -187,7 +187,7 @@ This project is licensed under the Apache License, Version 2.0. See [LICENSE](LI
 ## Support
 
 - **Documentation**: [docs.specado.com](https://docs.specado.com) (coming soon)
-- **Issues**: [GitHub Issues](https://github.com/specado/specado-rust/issues)
+- **Issues**: [GitHub Issues](https://github.com/specado/specado/issues)
 - **Discord**: [Join our community](https://discord.gg/specado) (coming soon)
 
 ## Acknowledgments

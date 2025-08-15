@@ -182,8 +182,8 @@ response.extensions.metadata          # Dict with routing/transformation details
 
 ```bash
 # Clone the repository
-git clone https://github.com/specado/specado-rust
-cd specado-rust/specado-python
+git clone https://github.com/specado/specado
+cd specado/specado-python
 
 # Install maturin for building
 pip install maturin
@@ -227,18 +227,18 @@ pytest tests/test_bindings.py::test_fallback_triggered -v
 
 ## 📄 License
 
-Apache-2.0 - see [LICENSE](https://github.com/specado/specado-rust/blob/main/LICENSE) for details.
+Apache-2.0 - see [LICENSE](https://github.com/specado/specado/blob/main/LICENSE) for details.
 
 ## 🔗 Links
 
-- **Homepage**: https://github.com/specado/specado-rust
+- **Homepage**: https://github.com/specado/specado
 - **Documentation**: https://docs.specado.com
-- **Issues**: https://github.com/specado/specado-rust/issues
-- **Changelog**: https://github.com/specado/specado-rust/blob/main/specado-python/CHANGELOG.md
+- **Issues**: https://github.com/specado/specado/issues
+- **Changelog**: https://github.com/specado/specado/blob/main/specado-python/CHANGELOG.md
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [contributing guidelines](https://github.com/specado/specado-rust/blob/main/CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [contributing guidelines](https://github.com/specado/specado/blob/main/CONTRIBUTING.md) for details.
 
 ---
 

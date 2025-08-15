@@ -290,7 +290,7 @@ jobs:
           ```
           
           ### What's Changed
-          See [CHANGELOG.md](https://github.com/specado/specado-rust/blob/main/specado-node/CHANGELOG.md) for detailed changes.
+          See [CHANGELOG.md](https://github.com/specado/specado/blob/main/specado-node/CHANGELOG.md) for detailed changes.
           
           ### Platform Support
           - Node.js 16.0.0+
@@ -329,4 +329,4 @@ jobs:
       run: |
         echo "🎉 Successfully published @specado/core@${{ github.ref_name }} to npm!"
         echo "📦 Package URL: https://www.npmjs.com/package/@specado/core"
-        echo "📖 Documentation: https://github.com/specado/specado-rust/tree/main/specado-node"
+        echo "📖 Documentation: https://github.com/specado/specado/tree/main/specado-node"

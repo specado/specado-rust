@@ -9,14 +9,14 @@
     "email": "hello@specado.com",
     "url": "https://specado.com"
   },
-  "homepage": "https://github.com/specado/specado-rust#readme",
+  "homepage": "https://github.com/specado/specado#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/specado/specado-rust.git",
+    "url": "https://github.com/specado/specado.git",
     "directory": "specado-node"
   },
   "bugs": {
-    "url": "https://github.com/specado/specado-rust/issues"
+    "url": "https://github.com/specado/specado/issues"
   },
   "funding": {
     "type": "github",

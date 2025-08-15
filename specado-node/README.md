@@ -189,8 +189,8 @@ response.extensions.metadata          // Record<string, string> with routing det
 
 ```bash
 # Clone the repository
-git clone https://github.com/specado/specado-rust
-cd specado-rust/specado-node
+git clone https://github.com/specado/specado
+cd specado/specado-node
 
 # Install dependencies
 npm install
@@ -272,24 +272,24 @@ The Rust core with NAPI-RS bindings provides:
 
 ## 📄 License
 
-Apache-2.0 - see [LICENSE](https://github.com/specado/specado-rust/blob/main/LICENSE) for details.
+Apache-2.0 - see [LICENSE](https://github.com/specado/specado/blob/main/LICENSE) for details.
 
 ## 🔗 Links
 
-- **Homepage**: https://github.com/specado/specado-rust
+- **Homepage**: https://github.com/specado/specado
 - **Documentation**: https://docs.specado.com
-- **Issues**: https://github.com/specado/specado-rust/issues
-- **Changelog**: https://github.com/specado/specado-rust/blob/main/specado-node/CHANGELOG.md
+- **Issues**: https://github.com/specado/specado/issues
+- **Changelog**: https://github.com/specado/specado/blob/main/specado-node/CHANGELOG.md
 - **npm Package**: https://www.npmjs.com/package/@specado/core
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [contributing guidelines](https://github.com/specado/specado-rust/blob/main/CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [contributing guidelines](https://github.com/specado/specado/blob/main/CONTRIBUTING.md) for details.
 
 ## 📞 Support
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/specado/specado-rust/issues)
-- **Discussions**: [Community discussions](https://github.com/specado/specado-rust/discussions)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/specado/specado/issues)
+- **Discussions**: [Community discussions](https://github.com/specado/specado/discussions)
 - **Email**: hello@specado.com
 
 ---

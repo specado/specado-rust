@@ -5,15 +5,15 @@ Specado is a spec-driven LLM integration library with a Rust core and Python/Nod
 
 ## Repository Information
 - **Organization**: specado
-- **Repository**: specado-rust
-- **GitHub URL**: https://github.com/specado/specado-rust
+- **Repository**: specado
+- **GitHub URL**: https://github.com/specado/specado
 - **Website**: https://www.specado.com
 - **Documentation**: https://docs.specado.com (coming soon)
 - **License**: Apache-2.0 (single license, not dual-licensed)
 
 ## Project Structure
 ```
-specado-rust/
+specado/
 ├── specado-core/       # Rust core library with FFI exports
 ├── specado-python/     # Python bindings using PyO3
 ├── specado-node/       # Node.js bindings using NAPI-RS

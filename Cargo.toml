@@ -12,8 +12,8 @@ authors = ["Specado Contributors"]
 edition = "2021"
 rust-version = "1.89.0"
 license = "Apache-2.0"
-repository = "https://github.com/specado/specado-rust"
-homepage = "https://github.com/specado/specado-rust"
+repository = "https://github.com/specado/specado"
+homepage = "https://github.com/specado/specado"
 
 [workspace.dependencies]
 # Common dependencies across the workspace - latest compatible versions for Rust 1.89.0
