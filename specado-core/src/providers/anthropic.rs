@@ -75,9 +75,18 @@ impl Provider for AnthropicProvider {
         // Convert messages to Anthropic format
         request.messages = self.convert_messages(&request.messages);
         
+        // Map provider-specific parameters
         // Anthropic uses "max_tokens_to_sample" instead of "max_tokens"
-        // This would be handled in the actual HTTP request builder
-        // For now, we just ensure the messages are in the right format
+        if let Some(max_tokens) = request.max_tokens {
+            request.metadata.insert(
+                "max_tokens_to_sample".to_string(), 
+                serde_json::json!(max_tokens)
+            );
+            // Keep the original max_tokens for now - actual HTTP client will use metadata
+        }
+        
+        // Anthropic uses "top_k" parameter which OpenAI doesn't have
+        // This would come from request.metadata if the user specified it
         
         request
     }

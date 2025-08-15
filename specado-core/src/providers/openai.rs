@@ -50,8 +50,21 @@ impl Provider for OpenAIProvider {
     }
     
     fn transform_request(&self, request: ChatRequest) -> ChatRequest {
-        // OpenAI uses its own format, so no transformation needed for MVP
-        // In the future, this might handle OpenAI-specific adjustments
+        // OpenAI uses its own format natively
+        // Map any provider-specific parameters from metadata
+        
+        // OpenAI supports seed parameter for reproducible outputs
+        if let Some(_seed) = request.metadata.get("seed") {
+            // The seed parameter is already in metadata, HTTP client will use it
+        }
+        
+        // OpenAI supports logprobs parameter
+        if let Some(_logprobs) = request.metadata.get("logprobs") {
+            // The logprobs parameter is already in metadata, HTTP client will use it
+        }
+        
+        // OpenAI uses standard "max_tokens" naming, no transformation needed
+        
         request
     }
     

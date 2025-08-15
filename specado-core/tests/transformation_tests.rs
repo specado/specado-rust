@@ -23,7 +23,7 @@ fn test_openai_to_anthropic_system_role_transformation() {
     
     // Check that transformation is marked as lossy
     assert!(result.lossy);
-    assert!(result.reasons.contains(&"system_role_merged".to_string()));
+    assert!(result.reasons.contains(&"system_role.merged".to_string()));
     
     // Check that system message was merged into user message
     assert_eq!(result.transformed.messages.len(), 1);
@@ -56,7 +56,7 @@ fn test_json_mode_not_supported() {
     
     // Check lossiness
     assert!(result.lossy);
-    assert!(result.reasons.contains(&"json_mode_not_supported".to_string()));
+    assert!(result.reasons.contains(&"response_format.json_mode.unsupported".to_string()));
     
     // Check that JSON mode was removed
     assert_eq!(result.transformed.response_format, None);
@@ -103,9 +103,9 @@ fn test_multiple_lossiness_reasons() {
     // Should have multiple lossiness reasons
     assert!(result.lossy);
     assert!(result.reasons.len() >= 3);
-    assert!(result.reasons.contains(&"system_role_merged".to_string()));
-    assert!(result.reasons.contains(&"json_mode_not_supported".to_string()));
-    assert!(result.reasons.contains(&"consecutive_same_role_not_supported".to_string()));
+    assert!(result.reasons.contains(&"system_role.merged".to_string()));
+    assert!(result.reasons.contains(&"response_format.json_mode.unsupported".to_string()));
+    assert!(result.reasons.contains(&"messages.consecutive_same_role.unsupported".to_string()));
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn test_consecutive_same_role_merging() {
     let result = transform_request(request, "anthropic");
     
     assert!(result.lossy);
-    assert!(result.reasons.contains(&"consecutive_same_role_not_supported".to_string()));
+    assert!(result.reasons.contains(&"messages.consecutive_same_role.unsupported".to_string()));
     
     // Should have merged the consecutive user messages
     assert_eq!(result.transformed.messages.len(), 3);
@@ -158,7 +158,6 @@ fn test_parameter_removal_tracking() {
 
 #[test]
 fn test_transform_engine_direct_usage() {
-    use specado_core::providers::adapter::Provider;
     
     let source = Box::new(OpenAIProvider::new());
     let target = Box::new(AnthropicProvider::new());
