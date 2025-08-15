@@ -15,13 +15,15 @@ crate-type = ["cdylib"]
 
 [dependencies]
 specado-core = { path = "../specado-core" }
-pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+pyo3 = { version = "0.25.1", features = ["extension-module", "abi3-py39"] }
+tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+futures = "0.3"
 
 [build-dependencies]
-pyo3-build-config = "0.23"
+pyo3-build-config = "0.25.1"
 
 [dev-dependencies]
 criterion = { workspace = true }
