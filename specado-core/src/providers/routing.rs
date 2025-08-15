@@ -141,6 +141,9 @@ pub struct PrimaryWithFallbacks {
     
     /// Whether to add routing metadata to responses
     track_metadata: bool,
+    
+    /// Retry policy for transient errors
+    retry_policy: Option<crate::providers::retry::RetryPolicy>,
 }
 
 impl PrimaryWithFallbacks {
@@ -150,6 +153,7 @@ impl PrimaryWithFallbacks {
             primary,
             fallbacks,
             track_metadata: true,
+            retry_policy: Some(crate::providers::retry::RetryPolicy::default()),
         }
     }
     
@@ -159,7 +163,65 @@ impl PrimaryWithFallbacks {
         self
     }
     
-    /// Execute request against a specific provider
+    /// Set the retry policy for transient errors
+    pub fn with_retry_policy(mut self, policy: crate::providers::retry::RetryPolicy) -> Self {
+        self.retry_policy = Some(policy);
+        self
+    }
+    
+    /// Disable retry logic
+    pub fn without_retry(mut self) -> Self {
+        self.retry_policy = None;
+        self
+    }
+    
+    /// Execute request against a specific provider with retry logic (simplified for MVP)
+    async fn execute_with_retry(
+        &self,
+        request: &ChatRequest,
+        provider: &Box<dyn Provider>,
+    ) -> (Option<TransformResult>, Vec<ProviderError>, u32, u64) {
+        let mut attempts = 0;
+        let mut total_delay_ms = 0;
+        let mut error_history = Vec::new();
+        
+        // Determine max attempts based on retry policy
+        let max_attempts = if let Some(ref policy) = self.retry_policy {
+            policy.max_retries + 1 // Initial attempt + retries
+        } else {
+            1 // No retry, just one attempt
+        };
+        
+        while attempts < max_attempts {
+            match self.execute_with_provider(request, provider) {
+                Ok(result) => {
+                    return (Some(result), error_history, attempts, total_delay_ms);
+                }
+                Err(error) => {
+                    error_history.push(error.clone());
+                    attempts += 1;
+                    
+                    // Check if we should retry
+                    if let Some(ref policy) = self.retry_policy {
+                        if attempts < max_attempts && error.is_retryable() {
+                            // Calculate delay
+                            let delay = policy.calculate_delay(attempts - 1, &error);
+                            total_delay_ms += delay.as_millis() as u64;
+                            
+                            // Sleep for the calculated delay
+                            tokio::time::sleep(delay).await;
+                        } else {
+                            break; // Don't retry non-retryable errors
+                        }
+                    }
+                }
+            }
+        }
+        
+        (None, error_history, attempts, total_delay_ms)
+    }
+    
+    /// Execute request against a specific provider (single attempt)
     fn execute_with_provider(
         &self,
         request: &ChatRequest,
@@ -234,12 +296,13 @@ impl RoutingStrategy for PrimaryWithFallbacks {
             metadata: HashMap::new(),
         };
         
-        // Try primary provider first
-        result.attempts += 1;
+        // Try primary provider first with retry logic
         let primary_name = self.primary.name().to_string();
+        let (transform_opt, errors, attempts, delay_ms) = self.execute_with_retry(&request, &self.primary).await;
         
-        match self.execute_with_provider(&request, &self.primary) {
-            Ok(transform_result) => {
+        result.attempts += attempts as usize;
+        
+        if let Some(transform_result) = transform_opt {
                 // Primary succeeded
                 result.transform_result = Some(transform_result.clone());
                 result.provider_used = primary_name.clone();
@@ -247,7 +310,8 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                 if self.track_metadata {
                     result.metadata.insert("primary_provider".to_string(), json!(primary_name));
                     result.metadata.insert("fallback_used".to_string(), json!(false));
-                    result.metadata.insert("attempts".to_string(), json!(1));
+                    result.metadata.insert("attempts".to_string(), json!(attempts));
+                    result.metadata.insert("retry_delay_ms".to_string(), json!(delay_ms));
                     
                     // Add transform metadata if lossy
                     if transform_result.lossy {
@@ -260,23 +324,25 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                 }
                 
                 return Ok(result);
-            }
-            Err(err) => {
-                // Record the error
-                result.provider_errors.insert(primary_name.clone(), err.to_string());
-                
-                // Check if error is retryable
-                if !err.is_retryable() {
-                    return Err(err);
+            } else {
+                // Primary failed after retries, record errors
+                if let Some(last_error) = errors.last() {
+                    result.provider_errors.insert(primary_name.clone(), last_error.to_string());
+                    
+                    // Check if error is retryable for fallback
+                    if !last_error.is_retryable() {
+                        return Err(last_error.clone());
+                    }
                 }
                 
                 // Try fallbacks
                 for (idx, fallback) in self.fallbacks.iter().enumerate() {
-                    result.attempts += 1;
                     let fallback_name = fallback.name().to_string();
+                    let (transform_opt, fb_errors, fb_attempts, _fb_delay_ms) = self.execute_with_retry(&request, fallback).await;
                     
-                    match self.execute_with_provider(&request, fallback) {
-                        Ok(transform_result) => {
+                    result.attempts += fb_attempts as usize;
+                    
+                    if let Some(transform_result) = transform_opt {
                             // Fallback succeeded
                             result.transform_result = Some(transform_result.clone());
                             result.provider_used = fallback_name.clone();
@@ -304,16 +370,13 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                             }
                             
                             return Ok(result);
+                        } else {
+                            // Fallback failed after retries, record errors
+                            if let Some(last_fb_error) = fb_errors.last() {
+                                result.provider_errors.insert(fallback_name, last_fb_error.to_string());
+                            }
+                            // Continue to next fallback
                         }
-                        Err(fallback_err) => {
-                            // Record the error and continue
-                            result.provider_errors.insert(fallback_name, fallback_err.to_string());
-                            
-                            // If this error is not retryable, we might still try other fallbacks
-                            // since they might work differently
-                            continue;
-                        }
-                    }
                 }
                 
                 // All providers failed
@@ -325,7 +388,6 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                     ),
                 })
             }
-        }
     }
     
     fn name(&self) -> &str {
