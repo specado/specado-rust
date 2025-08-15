@@ -1,7 +1,7 @@
 //! Configuration error types with detailed error reporting
 
-use thiserror::Error;
 use std::fmt;
+use thiserror::Error;
 
 /// Main configuration error type with detailed context
 #[derive(Debug, Error)]
@@ -45,9 +45,13 @@ pub struct ValidationError {
 
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Validation failed at '{}': {}", self.field_path, self.kind)?;
+        write!(
+            f,
+            "Validation failed at '{}': {}",
+            self.field_path, self.kind
+        )?;
         if let Some(ctx) = &self.context {
-            write!(f, " ({})", ctx)?;
+            write!(f, " ({ctx})")?;
         }
         Ok(())
     }

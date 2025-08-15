@@ -38,16 +38,17 @@ impl ConfigValidator {
         self.validate_env_vars(config)?;
         self.validate_routing_strategy(config)?;
         self.validate_model_consistency(config)?;
-        
+
         Ok(())
     }
 
     /// Validate environment variable placeholders
     fn validate_env_vars(&self, config: &SpecadoConfig) -> Result<(), ValidationError> {
-        for (_i, provider) in config.providers.iter().enumerate() {
+        for provider in config.providers.iter() {
+            let api_key_str = provider.api_key.expose_secret();
             // Check if API key contains env var placeholder
-            if self.env_var_pattern.is_match(&provider.api_key) {
-                let captures = self.env_var_pattern.captures(&provider.api_key);
+            if self.env_var_pattern.is_match(api_key_str) {
+                let captures = self.env_var_pattern.captures(api_key_str);
                 if let Some(cap) = captures {
                     let var_name = &cap[1];
                     // Check if it's a sensitive variable name
@@ -56,19 +57,19 @@ impl ConfigValidator {
                         // This is just a warning, not an error
                     }
                 }
-            } else if !provider.api_key.starts_with("sk-") && !provider.api_key.starts_with("${") {
+            } else if !api_key_str.starts_with("sk-") && !api_key_str.starts_with("${") {
                 // If it's not an env var and doesn't look like a key, warn
                 // This helps catch plain text keys in config
             }
         }
-        
+
         Ok(())
     }
 
     /// Validate routing strategy configuration
     fn validate_routing_strategy(&self, config: &SpecadoConfig) -> Result<(), ValidationError> {
         use super::schema::RoutingStrategy;
-        
+
         // First check that at least one provider is enabled
         let enabled_count = config.providers.iter().filter(|p| p.enabled).count();
         if enabled_count == 0 {
@@ -79,7 +80,7 @@ impl ConfigValidator {
                 },
             ));
         }
-        
+
         match config.routing.strategy {
             RoutingStrategy::Weighted => {
                 // Weighted strategy requires weights to be defined
@@ -87,9 +88,10 @@ impl ConfigValidator {
                     return Err(ValidationError::new(
                         "routing.weights",
                         ValidationErrorKind::RequiredFieldMissing,
-                    ).with_context("Weighted routing strategy requires weights to be defined"));
+                    )
+                    .with_context("Weighted routing strategy requires weights to be defined"));
                 }
-                
+
                 // All enabled providers should have weights
                 let mut total_weight = 0.0;
                 for provider in &config.providers {
@@ -100,17 +102,21 @@ impl ConfigValidator {
                             return Err(ValidationError::new(
                                 format!("routing.weights.{}", provider.name),
                                 ValidationErrorKind::RequiredFieldMissing,
-                            ).with_context("Weighted routing requires all enabled providers to have weights"));
+                            )
+                            .with_context(
+                                "Weighted routing requires all enabled providers to have weights",
+                            ));
                         }
                     }
                 }
-                
+
                 // Ensure total weight is positive
                 if total_weight <= 0.0 {
                     return Err(ValidationError::new(
                         "routing.weights",
                         ValidationErrorKind::Custom {
-                            message: "Sum of weights for enabled providers must be positive".to_string(),
+                            message: "Sum of weights for enabled providers must be positive"
+                                .to_string(),
                         },
                     ));
                 }
@@ -123,15 +129,21 @@ impl ConfigValidator {
                             // Check for missing cost fields and report specific errors
                             if model.cost_per_1k_input.is_none() {
                                 return Err(ValidationError::new(
-                                    format!("providers[{}].models[{}].cost_per_1k_input", i, j),
+                                    format!("providers[{i}].models[{j}].cost_per_1k_input"),
                                     ValidationErrorKind::RequiredFieldMissing,
-                                ).with_context("Cost-optimized routing requires input cost for all models"));
+                                )
+                                .with_context(
+                                    "Cost-optimized routing requires input cost for all models",
+                                ));
                             }
                             if model.cost_per_1k_output.is_none() {
                                 return Err(ValidationError::new(
-                                    format!("providers[{}].models[{}].cost_per_1k_output", i, j),
+                                    format!("providers[{i}].models[{j}].cost_per_1k_output"),
                                     ValidationErrorKind::RequiredFieldMissing,
-                                ).with_context("Cost-optimized routing requires output cost for all models"));
+                                )
+                                .with_context(
+                                    "Cost-optimized routing requires output cost for all models",
+                                ));
                             }
                         }
                     }
@@ -139,16 +151,16 @@ impl ConfigValidator {
             }
             _ => {}
         }
-        
+
         Ok(())
     }
 
     /// Validate model consistency across providers
     fn validate_model_consistency(&self, config: &SpecadoConfig) -> Result<(), ValidationError> {
         // Collect all model IDs across providers
-        let mut model_providers: std::collections::HashMap<String, Vec<String>> = 
+        let mut model_providers: std::collections::HashMap<String, Vec<String>> =
             std::collections::HashMap::new();
-        
+
         for provider in &config.providers {
             for model in &provider.models {
                 model_providers
@@ -157,27 +169,27 @@ impl ConfigValidator {
                     .push(provider.name.clone());
             }
         }
-        
+
         // Check for models that exist in multiple providers with different configs
         // This is not an error, but we should validate they're compatible
         for (model_id, providers) in model_providers.iter() {
             if providers.len() > 1 {
                 // Verify that the same model has compatible settings across providers
                 let mut max_tokens_set = HashSet::new();
-                
+
                 for provider in &config.providers {
                     if let Some(model) = provider.models.iter().find(|m| &m.id == model_id) {
                         max_tokens_set.insert(model.max_tokens);
                     }
                 }
-                
+
                 if max_tokens_set.len() > 1 {
                     // Warning: same model has different max_tokens across providers
                     // This might be intentional (different API versions), so not an error
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -202,10 +214,10 @@ mod tests {
     #[test]
     fn test_env_var_extraction() {
         let validator = ConfigValidator::new();
-        
+
         let text = "api_key: ${OPENAI_API_KEY}, url: ${API_BASE_URL}";
         let vars = validator.extract_env_vars(text);
-        
+
         assert_eq!(vars.len(), 2);
         assert!(vars.contains(&"OPENAI_API_KEY".to_string()));
         assert!(vars.contains(&"API_BASE_URL".to_string()));
@@ -214,13 +226,13 @@ mod tests {
     #[test]
     fn test_sensitive_field_detection() {
         let validator = ConfigValidator::new();
-        
+
         assert!(validator.is_sensitive_field("api_key"));
         assert!(validator.is_sensitive_field("API_KEY"));
         assert!(validator.is_sensitive_field("secret_token"));
         assert!(validator.is_sensitive_field("password"));
         assert!(validator.is_sensitive_field("auth_credential"));
-        
+
         assert!(!validator.is_sensitive_field("username"));
         assert!(!validator.is_sensitive_field("model_id"));
     }

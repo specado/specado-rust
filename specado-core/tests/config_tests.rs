@@ -1,8 +1,6 @@
 //! Integration tests for configuration loading and validation
 
-use specado_core::config::{
-    load_from_yaml, load_from_json, ConfigError
-};
+use specado_core::config::{load_from_json, load_from_yaml, ConfigError};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -18,7 +16,7 @@ fn create_test_file(dir: &TempDir, name: &str, content: &str) -> PathBuf {
 fn test_load_valid_yaml_config() {
     use std::env;
     env::set_var("OPENAI_API_KEY", "test-key");
-    
+
     let yaml = r#"
 version: "0.1"
 providers:
@@ -39,19 +37,20 @@ routing:
     enabled: true
     max_retries: 3
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_ok());
-    
+
     let config = result.unwrap();
     assert_eq!(config.version, "0.1");
     assert_eq!(config.providers.len(), 1);
     assert_eq!(config.providers[0].name, "openai");
+    assert_eq!(config.providers[0].api_key.expose_secret(), "test-key");
     assert_eq!(config.providers[0].models.len(), 2);
-    
+
     env::remove_var("OPENAI_API_KEY");
 }
 
@@ -59,7 +58,7 @@ routing:
 fn test_load_valid_json_config() {
     use std::env;
     env::set_var("ANTHROPIC_API_KEY", "test-key");
-    
+
     let json = r#"{
   "version": "0.1",
   "providers": [
@@ -81,17 +80,17 @@ fn test_load_valid_json_config() {
     "strategy": "priority"
   }
 }"#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.json", json);
-    
+
     let result = load_from_json(path);
     assert!(result.is_ok());
-    
+
     let config = result.unwrap();
     assert_eq!(config.version, "0.1");
     assert_eq!(config.providers[0].name, "anthropic");
-    
+
     env::remove_var("ANTHROPIC_API_KEY");
 }
 
@@ -105,13 +104,13 @@ providers:
     base_url: https://api.openai.com/v1
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
-    
+
     match result {
         Err(ConfigError::ValidationError(e)) => {
             assert_eq!(e.field_path, "version");
@@ -120,7 +119,10 @@ providers:
             // This is also acceptable - serde might fail to parse without version
         }
         _ => {
-            panic!("Expected validation or parse error for missing version, got: {:?}", result);
+            panic!(
+                "Expected validation or parse error for missing version, got: {:?}",
+                result
+            );
         }
     }
 }
@@ -136,13 +138,13 @@ providers:
     base_url: https://api.openai.com/v1
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
-    
+
     if let Err(ConfigError::ValidationError(e)) = result {
         assert_eq!(e.field_path, "version");
     } else {
@@ -156,13 +158,13 @@ fn test_empty_providers_list() {
 version: "0.1"
 providers: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
-    
+
     if let Err(ConfigError::ValidationError(e)) = result {
         assert_eq!(e.field_path, "providers");
     } else {
@@ -186,10 +188,10 @@ providers:
     base_url: https://api.openai.com/v1
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
 }
@@ -205,10 +207,10 @@ providers:
     base_url: not-a-url
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
 }
@@ -227,10 +229,10 @@ providers:
         max_tokens: 8192
         default_temperature: 3.0
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
 }
@@ -248,10 +250,10 @@ providers:
 routing:
   strategy: weighted
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
 }
@@ -272,10 +274,10 @@ routing:
     openai: 1.0
     nonexistent: 2.0
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
 }
@@ -285,7 +287,7 @@ fn test_complex_valid_config() {
     use std::env;
     env::set_var("OPENAI_API_KEY", "test-key-1");
     env::set_var("ANTHROPIC_API_KEY", "test-key-2");
-    
+
     let yaml = r#"
 version: "0.1"
 providers:
@@ -341,13 +343,13 @@ metadata:
   environment: production
   version: 1.0.0
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_ok());
-    
+
     let config = result.unwrap();
     assert_eq!(config.providers.len(), 2);
     assert_eq!(config.providers[0].priority, 100);
@@ -355,7 +357,7 @@ metadata:
     assert_eq!(config.routing.fallback.max_retries, 5);
     assert_eq!(config.connection.connect_timeout_ms, 5000);
     assert_eq!(config.defaults.temperature, 0.8);
-    
+
     env::remove_var("OPENAI_API_KEY");
     env::remove_var("ANTHROPIC_API_KEY");
 }
@@ -375,10 +377,10 @@ providers:
         max_output_tokens: 10000
         default_temperature: 0.7
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err()); // max_output_tokens > max_tokens
 }
@@ -386,9 +388,9 @@ providers:
 #[test]
 fn test_env_var_interpolation() {
     use std::env;
-    
+
     env::set_var("TEST_API_KEY", "sk-test-key-123");
-    
+
     let yaml = r#"
 version: "0.1"
 providers:
@@ -398,16 +400,19 @@ providers:
     base_url: https://api.openai.com/v1
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_ok());
-    
+
     let config = result.unwrap();
-    assert_eq!(config.providers[0].api_key, "sk-test-key-123");
-    
+    assert_eq!(
+        config.providers[0].api_key.expose_secret(),
+        "sk-test-key-123"
+    );
+
     env::remove_var("TEST_API_KEY");
 }
 
@@ -422,13 +427,13 @@ providers:
     base_url: https://api.openai.com/v1
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
-    
+
     if let Err(ConfigError::EnvVarNotFound { var }) = result {
         assert_eq!(var, "MISSING_ENV_VAR");
     } else {
@@ -448,10 +453,10 @@ providers:
     enabled: false
     models: []
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
 }
@@ -478,10 +483,10 @@ routing:
   weights:
     openai: 0.0
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err()); // Sum of weights is 0
 }
@@ -503,13 +508,13 @@ providers:
 routing:
   strategy: cost_optimized
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err());
-    
+
     // Should specifically report missing cost_per_1k_output
     if let Err(ConfigError::ValidationError(e)) = result {
         assert!(e.field_path.contains("cost_per_1k_output"));
@@ -532,10 +537,103 @@ providers:
       max_delay_ms: 2000
       backoff_multiplier: 2.0
 "#;
-    
+
     let dir = TempDir::new().unwrap();
     let path = create_test_file(&dir, "config.yaml", yaml);
-    
+
     let result = load_from_yaml(path);
     assert!(result.is_err()); // max_delay_ms < initial_delay_ms
+}
+
+#[test]
+fn test_api_key_redaction() {
+    use specado_core::config::SafeLogging;
+    use std::env;
+
+    env::set_var("REDACT_TEST_KEY", "sk-secret-api-key-123456");
+
+    let yaml = r#"
+version: "0.1"
+providers:
+  - name: test_provider
+    type: openai
+    api_key: ${REDACT_TEST_KEY}
+    base_url: https://api.example.com/v1
+    models: []
+"#;
+
+    let dir = TempDir::new().unwrap();
+    let path = create_test_file(&dir, "config.yaml", yaml);
+
+    let result = load_from_yaml(path);
+    assert!(result.is_ok());
+
+    let config = result.unwrap();
+    let provider = &config.providers[0];
+
+    // Verify the actual value is preserved
+    assert_eq!(provider.api_key.expose_secret(), "sk-secret-api-key-123456");
+
+    // Verify Debug output is redacted
+    let debug_output = format!("{:?}", provider);
+    assert!(debug_output.contains("[REDACTED]"));
+    assert!(!debug_output.contains("sk-secret-api-key-123456"));
+
+    // Verify SafeLogging output is redacted
+    let safe_output = provider.safe_for_logging();
+    assert!(safe_output.contains("[REDACTED]"));
+    assert!(!safe_output.contains("sk-secret-api-key-123456"));
+
+    env::remove_var("REDACT_TEST_KEY");
+}
+
+#[test]
+fn test_secret_string_partial_redaction() {
+    use specado_core::config::SecretString;
+
+    // Test various secret formats
+    let test_cases = vec![
+        ("sk-1234567890abcdef", "sk-...cdef"),
+        ("pk-test-key-123", "pk-...-123"), // Fixed expectation
+        ("short", "[REDACTED]"),           // Too short for partial
+        ("my-secret-value", "my...ue"),
+        ("", "[EMPTY]"),
+    ];
+
+    for (input, expected) in test_cases {
+        let secret = SecretString::new(input);
+        assert_eq!(secret.partial_redact(), expected);
+        // Always fully redacted in Display/Debug
+        assert_eq!(format!("{}", secret), "[REDACTED]");
+        assert_eq!(format!("{:?}", secret), "[REDACTED]");
+    }
+}
+
+#[test]
+fn test_redaction_helper_functions() {
+    use specado_core::config::{redact_by_field_name, safe_value};
+
+    // Test field name based redaction
+    assert_eq!(redact_by_field_name("api_key", "secret123"), "[REDACTED]");
+    assert_eq!(redact_by_field_name("API_KEY", "secret123"), "[REDACTED]");
+    assert_eq!(redact_by_field_name("secret_token", "token"), "[REDACTED]");
+    assert_eq!(redact_by_field_name("password", "pass"), "[REDACTED]");
+    assert_eq!(
+        redact_by_field_name("auth_credential", "cred"),
+        "[REDACTED]"
+    );
+    assert_eq!(redact_by_field_name("private_key", "key"), "[REDACTED]");
+
+    // Non-sensitive fields should not be redacted
+    assert_eq!(redact_by_field_name("username", "john"), "john");
+    assert_eq!(
+        redact_by_field_name("email", "user@example.com"),
+        "user@example.com"
+    );
+    assert_eq!(redact_by_field_name("model_id", "gpt-4"), "gpt-4");
+
+    // Test safe_value helper
+    assert_eq!(safe_value(&"sensitive", true), "[REDACTED]");
+    assert_eq!(safe_value(&"normal", false), "normal");
+    assert_eq!(safe_value(&42, false), "42");
 }
