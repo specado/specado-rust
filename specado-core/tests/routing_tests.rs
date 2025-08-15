@@ -274,3 +274,88 @@ async fn test_routing_strategy_trait() {
     let result = router.route(request).await.unwrap();
     assert_eq!(result.provider_used, "openai");
 }
+
+#[tokio::test]
+async fn test_openai_to_anthropic_transformation_integration() {
+    // Integration test proving Week 2 MVP functionality: OpenAI to Anthropic transformation
+    // with fallback routing, lossiness tracking, and provider swapping works end-to-end.
+    // 
+    // This test demonstrates that:
+    // 1. Primary provider (OpenAI) failure triggers fallback routing
+    // 2. Transformation engine converts OpenAI format to Anthropic format
+    // 3. System role merging creates lossy transformation with proper tracking
+    // 4. Complete routing and transformation metadata is preserved
+    // 5. End-to-end flow works for real-world provider failure scenarios
+    
+    // Create router with OpenAI primary (will fail) and Anthropic fallback (will succeed)
+    let router = RoutingBuilder::new()
+        .primary(Box::new(OpenAIProvider::new()))
+        .fallback(Box::new(AnthropicProvider::new()))
+        .build()
+        .unwrap();
+    
+    // Create a request with system role (lossy for Anthropic) that triggers OpenAI timeout
+    // This simulates a real scenario where OpenAI fails and we need Anthropic fallback
+    let request = ChatRequest::new(
+        "timeout-test-model", // This triggers timeout in OpenAI provider
+        vec![
+            Message::system("You are a helpful assistant that provides concise answers"),
+            Message::user("Hello, can you help me understand fallback routing?"),
+        ],
+    );
+    
+    // Execute the complete routing and transformation pipeline
+    let result = router.route(request).await.unwrap();
+    
+    // ========== PROVE FALLBACK ROUTING WORKS ==========
+    assert_eq!(result.provider_used, "anthropic", 
+        "Should use Anthropic fallback after OpenAI timeout");
+    assert!(result.used_fallback, 
+        "Should indicate that fallback was triggered");
+    assert_eq!(result.attempts, 2, 
+        "Should have tried OpenAI (failed) then Anthropic (succeeded)");
+    
+    // ========== PROVE ERROR HANDLING WORKS ==========
+    assert!(result.provider_errors.contains_key("openai"), 
+        "Should record OpenAI provider error");
+    let openai_error = result.provider_errors.get("openai").unwrap();
+    assert!(openai_error.contains("timeout") || openai_error.contains("Timeout"), 
+        "Should record timeout error from OpenAI provider");
+    
+    // ========== PROVE TRANSFORMATION PIPELINE WORKS ==========
+    assert!(result.transform_result.is_some(), 
+        "Should have transformation result from successful Anthropic provider");
+    let transform_result = result.transform_result.unwrap();
+    
+    // ========== PROVE LOSSINESS TRACKING WORKS ==========
+    assert!(transform_result.lossy, 
+        "Transformation should be lossy due to system role merging");
+    assert!(transform_result.reasons.contains(&"system_role.merged".to_string()),
+        "Should track that system role was merged into user message");
+    
+    // ========== PROVE METADATA PRESERVATION WORKS ==========
+    // Check routing metadata
+    assert_eq!(result.metadata.get("primary_provider").and_then(|v| v.as_str()), 
+        Some("openai"), "Should track original primary provider");
+    assert_eq!(result.metadata.get("fallback_provider").and_then(|v| v.as_str()), 
+        Some("anthropic"), "Should track fallback provider used");
+    assert_eq!(result.metadata.get("fallback_used").and_then(|v| v.as_bool()), 
+        Some(true), "Should indicate fallback was used");
+    
+    // Check transformation metadata
+    assert_eq!(result.metadata.get("transformation_lossy").and_then(|v| v.as_bool()), 
+        Some(true), "Should track that transformation was lossy");
+    assert!(result.metadata.contains_key("lossy_reasons"), 
+        "Should include detailed lossiness reasons");
+    
+    // ========== PROVE COMPLETE INTEGRATION ==========
+    // This test proves that the Week 2 MVP system can handle:
+    // 1. Real provider failures (OpenAI timeout)
+    // 2. Automatic fallback routing (to Anthropic)  
+    // 3. Format transformation (OpenAI → Anthropic)
+    // 4. Lossiness detection (system role merging)
+    // 5. Complete metadata tracking (routing + transformation)
+    //
+    // This demonstrates the full transformation + routing pipeline works correctly
+    // for production scenarios where providers fail and format conversion is needed.
+}

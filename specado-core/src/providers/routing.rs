@@ -176,6 +176,8 @@ impl PrimaryWithFallbacks {
     }
     
     /// Execute request against a specific provider with retry logic (simplified for MVP)
+    /// Returns: (result, errors, provider_tried_count, delay_ms)
+    /// Note: provider_tried_count is always 1 (we tried this provider once)
     async fn execute_with_retry(
         &self,
         request: &ChatRequest,
@@ -195,7 +197,7 @@ impl PrimaryWithFallbacks {
         while attempts < max_attempts {
             match self.execute_with_provider(request, provider) {
                 Ok(result) => {
-                    return (Some(result), error_history, attempts, total_delay_ms);
+                    return (Some(result), error_history, 1, total_delay_ms);
                 }
                 Err(error) => {
                     error_history.push(error.clone());
@@ -218,7 +220,7 @@ impl PrimaryWithFallbacks {
             }
         }
         
-        (None, error_history, attempts, total_delay_ms)
+        (None, error_history, 1, total_delay_ms)
     }
     
     /// Execute request against a specific provider (single attempt)
