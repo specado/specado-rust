@@ -35,8 +35,8 @@ async fn test_primary_success_no_fallback() {
     assert!(result.provider_errors.is_empty());
     
     // Check metadata
-    assert_eq!(result.metadata.get("fallback_used").unwrap(), false);
-    assert_eq!(result.metadata.get("primary_provider").unwrap(), "openai");
+    assert_eq!(result.metadata.get("fallback_used").and_then(|v| v.as_bool()), Some(false));
+    assert_eq!(result.metadata.get("primary_provider").and_then(|v| v.as_str()), Some("openai"));
 }
 
 #[tokio::test]
@@ -64,10 +64,10 @@ async fn test_fallback_on_timeout() {
     assert!(result.provider_errors.contains_key("openai"));
     
     // Check metadata
-    assert_eq!(result.metadata.get("fallback_used").unwrap(), true);
-    assert_eq!(result.metadata.get("primary_provider").unwrap(), "openai");
-    assert_eq!(result.metadata.get("fallback_provider").unwrap(), "anthropic");
-    assert_eq!(result.metadata.get("fallback_index").unwrap(), 0);
+    assert_eq!(result.metadata.get("fallback_used").and_then(|v| v.as_bool()), Some(true));
+    assert_eq!(result.metadata.get("primary_provider").and_then(|v| v.as_str()), Some("openai"));
+    assert_eq!(result.metadata.get("fallback_provider").and_then(|v| v.as_str()), Some("anthropic"));
+    assert_eq!(result.metadata.get("fallback_index").and_then(|v| v.as_u64()), Some(0));
 }
 
 #[tokio::test]
@@ -246,7 +246,7 @@ async fn test_transform_metadata_preservation() {
     assert!(transform.reasons.contains(&"system_role.merged".to_string()));
     
     // Check metadata includes transformation info
-    assert_eq!(result.metadata.get("transformation_lossy").unwrap(), true);
+    assert_eq!(result.metadata.get("transformation_lossy").and_then(|v| v.as_bool()), Some(true));
     let reasons = result.metadata.get("lossy_reasons").unwrap();
     assert!(reasons.as_array().unwrap().len() > 0);
 }

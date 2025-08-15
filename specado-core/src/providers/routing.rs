@@ -163,7 +163,7 @@ impl PrimaryWithFallbacks {
     fn execute_with_provider(
         &self,
         request: &ChatRequest,
-        provider_name: &str,
+        provider: &Box<dyn Provider>,
     ) -> Result<TransformResult, ProviderError> {
         // Use the transformation engine to prepare the request
         use crate::providers::TransformationEngine;
@@ -172,11 +172,13 @@ impl PrimaryWithFallbacks {
         // For MVP, we assume source is OpenAI format
         let source = ProviderType::OpenAI.create_provider();
         
-        // Create the target provider based on name
-        let target = match provider_name {
+        // Clone the provider box to create a new owned box
+        // This is a workaround since we can't clone trait objects directly
+        // In production, we'd use Arc<dyn Provider> for shared ownership
+        let target = match provider.name() {
             "openai" => ProviderType::OpenAI.create_provider(),
             "anthropic" => ProviderType::Anthropic.create_provider(),
-            _ => ProviderType::OpenAI.create_provider(), // Default
+            _ => ProviderType::OpenAI.create_provider(),
         };
         
         // Create transformation engine
@@ -185,12 +187,13 @@ impl PrimaryWithFallbacks {
         // Transform the request
         let transform_result = engine.transform_request(request.clone());
         
-        // In a real implementation, we would make the HTTP request here
+        // TODO: Execute actual HTTP request and populate response field
         // For MVP, we simulate success if transformation worked
+        // In Week 3, this will make real HTTP calls and return ChatResponse
         
         // Simulate some failure scenarios for testing
         // Only fail on the first provider to test fallback behavior
-        if provider_name == "openai" {
+        if provider.name() == "openai" {
             if request.model.contains("timeout-test") {
                 return Err(ProviderError::Timeout);
             }
@@ -235,7 +238,7 @@ impl RoutingStrategy for PrimaryWithFallbacks {
         result.attempts += 1;
         let primary_name = self.primary.name().to_string();
         
-        match self.execute_with_provider(&request, &primary_name) {
+        match self.execute_with_provider(&request, &self.primary) {
             Ok(transform_result) => {
                 // Primary succeeded
                 result.transform_result = Some(transform_result.clone());
@@ -272,7 +275,7 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                     result.attempts += 1;
                     let fallback_name = fallback.name().to_string();
                     
-                    match self.execute_with_provider(&request, &fallback_name) {
+                    match self.execute_with_provider(&request, fallback) {
                         Ok(transform_result) => {
                             // Fallback succeeded
                             result.transform_result = Some(transform_result.clone());
