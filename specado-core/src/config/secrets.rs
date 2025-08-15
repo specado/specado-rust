@@ -70,7 +70,6 @@ impl fmt::Display for SecretString {
     }
 }
 
-
 impl PartialEq for SecretString {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
@@ -134,7 +133,6 @@ pub unsafe fn set_redaction_policy(policy: RedactionPolicy) {
 pub fn get_redaction_policy() -> RedactionPolicy {
     unsafe { REDACTION_POLICY }
 }
-
 
 /// Redact a string based on field name patterns
 pub fn redact_by_field_name(field_name: &str, value: &str) -> String {
@@ -227,6 +225,14 @@ mod tests {
 
     #[test]
     fn test_redaction_policy() {
+        // Test Full policy first (since tests may run in parallel, start with Full)
+        unsafe {
+            set_redaction_policy(RedactionPolicy::Full);
+        }
+        let result_full = redact_by_field_name("api_key", "sk-1234567890");
+        assert_eq!(result_full, "[REDACTED]");
+
+        // Test Partial policy
         unsafe {
             set_redaction_policy(RedactionPolicy::Partial);
         }
@@ -234,13 +240,6 @@ mod tests {
 
         let result = redact_by_field_name("api_key", "sk-1234567890");
         assert_eq!(result, "sk...");
-
-        // Test Full policy
-        unsafe {
-            set_redaction_policy(RedactionPolicy::Full);
-        }
-        let result_full = redact_by_field_name("api_key", "sk-1234567890");
-        assert_eq!(result_full, "[REDACTED]");
 
         // Test None policy
         unsafe {

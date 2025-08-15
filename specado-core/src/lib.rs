@@ -3,6 +3,7 @@
 //! This crate provides the core functionality for spec-driven LLM integration.
 
 pub mod config;
+pub mod protocol;
 
 use std::ffi::CString;
 use std::os::raw::c_char;
