@@ -89,8 +89,12 @@ jobs:
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
           if [[ "$VERSION" == *"-"* ]]; then
-            cargo install cargo-edit
-            cargo set-version --workspace "$VERSION"
+            # For pre-release versions, manually update Cargo.toml to avoid cargo-edit downgrade issues
+            BASE_VERSION=$(echo "$VERSION" | sed 's/-.*$//')
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-core/Cargo.toml
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-python/Cargo.toml
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-node/Cargo.toml
             echo "Updated Cargo.toml version to: $VERSION"
           fi
         shell: bash
@@ -100,8 +104,11 @@ jobs:
         run: |
           $VERSION = "${{ needs.validate-version.outputs.version }}"
           if ($VERSION -match "-") {
-            cargo install cargo-edit
-            cargo set-version --workspace "$VERSION"
+            # For pre-release versions, manually update Cargo.toml to avoid cargo-edit downgrade issues
+            $files = @("Cargo.toml", "specado-core\Cargo.toml", "specado-python\Cargo.toml", "specado-node\Cargo.toml")
+            foreach ($file in $files) {
+              (Get-Content $file) -replace '^version = ".*"', "version = `"$VERSION`"" | Set-Content $file
+            }
             echo "Updated Cargo.toml version to: $VERSION"
           }
         shell: powershell
@@ -216,7 +223,10 @@ jobs:
           npm install -g @napi-rs/cli@latest
           if [[ "${{ matrix.cross }}" == "true" ]]; then
             echo "Running cross-compilation build..."
-            napi build --release --target ${{ matrix.target }} --cross-compile
+            # Use cargo-zigbuild for ARM64 cross-compilation
+            cargo zigbuild --release --target ${{ matrix.target }}
+            # Copy the built library to the expected location
+            cp ../target/${{ matrix.target }}/release/libspecado_node.so specado.linux-arm64-gnu.node
           else
             echo "Running native build..."
             napi build --release --target ${{ matrix.target }}
