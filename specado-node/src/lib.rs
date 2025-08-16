@@ -334,6 +334,60 @@ pub fn hello_world() -> Result<String> {
     Ok(specado_core::hello_world())
 }
 
+/// Get OpenAI provider manifest as JSON object
+#[napi(js_name = "getOpenaiManifest")]
+pub fn get_openai_manifest() -> Result<String> {
+    let manifest = specado_core::capabilities::ProviderManifest::openai();
+    serde_json::to_string(&manifest)
+        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, format!("Failed to serialize manifest: {}", e)))
+}
+
+/// Get Anthropic provider manifest as JSON object
+#[napi(js_name = "getAnthropicManifest")]
+pub fn get_anthropic_manifest() -> Result<String> {
+    let manifest = specado_core::capabilities::ProviderManifest::anthropic();
+    serde_json::to_string(&manifest)
+        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, format!("Failed to serialize manifest: {}", e)))
+}
+
+/// Compare two capabilities and return lossiness report
+#[napi(js_name = "compareCapabilities")]
+pub fn compare_capabilities(source_json: String, target_json: String) -> Result<String> {
+    // Parse source capability
+    let source: specado_core::capabilities::Capability = serde_json::from_str(&source_json)
+        .map_err(|e| napi::Error::new(napi::Status::InvalidArg, format!("Invalid source capability: {}", e)))?;
+    
+    // Parse target capability
+    let target: specado_core::capabilities::Capability = serde_json::from_str(&target_json)
+        .map_err(|e| napi::Error::new(napi::Status::InvalidArg, format!("Invalid target capability: {}", e)))?;
+    
+    // Compare capabilities
+    let comparison = source.compare(&target);
+    
+    // Serialize result
+    serde_json::to_string(&comparison)
+        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, format!("Failed to serialize comparison: {}", e)))
+}
+
+/// Get model capabilities for a specific provider and model
+#[napi(js_name = "getModelCapabilities")]
+pub fn get_model_capabilities(provider: String, model_id: String) -> Result<Option<String>> {
+    let manifest = match provider.to_lowercase().as_str() {
+        "openai" => specado_core::capabilities::ProviderManifest::openai(),
+        "anthropic" => specado_core::capabilities::ProviderManifest::anthropic(),
+        _ => return Ok(None),
+    };
+    
+    match manifest.get_model_capabilities(&model_id) {
+        Some(capabilities) => {
+            let json = serde_json::to_string(capabilities)
+                .map_err(|e| napi::Error::new(napi::Status::GenericFailure, format!("Failed to serialize capabilities: {}", e)))?;
+            Ok(Some(json))
+        }
+        None => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -354,7 +408,7 @@ mod tests {
     
     #[test]
     fn test_message_creation() {
-        let msg = Message::new("user".to_string(), "Hello".to_string());
+        let msg = create_message("user".to_string(), "Hello".to_string());
         assert_eq!(msg.role, "user");
         assert_eq!(msg.content, "Hello");
     }

@@ -78,10 +78,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-android-arm64')
-        const bindingPackageVersion = require('specado-android-arm64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-android-arm64')
+        const bindingPackageVersion = require('specado-temp-android-arm64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -94,10 +94,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-android-arm-eabi')
-        const bindingPackageVersion = require('specado-android-arm-eabi/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-android-arm-eabi')
+        const bindingPackageVersion = require('specado-temp-android-arm-eabi/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -114,10 +114,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-win32-x64-msvc')
-        const bindingPackageVersion = require('specado-win32-x64-msvc/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-win32-x64-msvc')
+        const bindingPackageVersion = require('specado-temp-win32-x64-msvc/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -130,10 +130,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-win32-ia32-msvc')
-        const bindingPackageVersion = require('specado-win32-ia32-msvc/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-win32-ia32-msvc')
+        const bindingPackageVersion = require('specado-temp-win32-ia32-msvc/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -146,10 +146,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-win32-arm64-msvc')
-        const bindingPackageVersion = require('specado-win32-arm64-msvc/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-win32-arm64-msvc')
+        const bindingPackageVersion = require('specado-temp-win32-arm64-msvc/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -165,10 +165,10 @@ function requireNative() {
       loadErrors.push(e)
     }
     try {
-      const binding = require('specado-darwin-universal')
-      const bindingPackageVersion = require('specado-darwin-universal/package.json').version
-      if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-        throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+      const binding = require('specado-temp-darwin-universal')
+      const bindingPackageVersion = require('specado-temp-darwin-universal/package.json').version
+      if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+        throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
       }
       return binding
     } catch (e) {
@@ -181,10 +181,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-darwin-x64')
-        const bindingPackageVersion = require('specado-darwin-x64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-darwin-x64')
+        const bindingPackageVersion = require('specado-temp-darwin-x64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -197,10 +197,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-darwin-arm64')
-        const bindingPackageVersion = require('specado-darwin-arm64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-darwin-arm64')
+        const bindingPackageVersion = require('specado-temp-darwin-arm64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -217,10 +217,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-freebsd-x64')
-        const bindingPackageVersion = require('specado-freebsd-x64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-freebsd-x64')
+        const bindingPackageVersion = require('specado-temp-freebsd-x64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -233,10 +233,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-freebsd-arm64')
-        const bindingPackageVersion = require('specado-freebsd-arm64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-freebsd-arm64')
+        const bindingPackageVersion = require('specado-temp-freebsd-arm64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -254,10 +254,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-x64-musl')
-          const bindingPackageVersion = require('specado-linux-x64-musl/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-x64-musl')
+          const bindingPackageVersion = require('specado-temp-linux-x64-musl/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -270,10 +270,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-x64-gnu')
-          const bindingPackageVersion = require('specado-linux-x64-gnu/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-x64-gnu')
+          const bindingPackageVersion = require('specado-temp-linux-x64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -288,10 +288,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-arm64-musl')
-          const bindingPackageVersion = require('specado-linux-arm64-musl/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-arm64-musl')
+          const bindingPackageVersion = require('specado-temp-linux-arm64-musl/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -304,10 +304,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-arm64-gnu')
-          const bindingPackageVersion = require('specado-linux-arm64-gnu/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-arm64-gnu')
+          const bindingPackageVersion = require('specado-temp-linux-arm64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -322,10 +322,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-arm-musleabihf')
-          const bindingPackageVersion = require('specado-linux-arm-musleabihf/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-arm-musleabihf')
+          const bindingPackageVersion = require('specado-temp-linux-arm-musleabihf/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -338,10 +338,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-arm-gnueabihf')
-          const bindingPackageVersion = require('specado-linux-arm-gnueabihf/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-arm-gnueabihf')
+          const bindingPackageVersion = require('specado-temp-linux-arm-gnueabihf/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -356,10 +356,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-riscv64-musl')
-          const bindingPackageVersion = require('specado-linux-riscv64-musl/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-riscv64-musl')
+          const bindingPackageVersion = require('specado-temp-linux-riscv64-musl/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -372,10 +372,10 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('specado-linux-riscv64-gnu')
-          const bindingPackageVersion = require('specado-linux-riscv64-gnu/package.json').version
-          if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('specado-temp-linux-riscv64-gnu')
+          const bindingPackageVersion = require('specado-temp-linux-riscv64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -389,10 +389,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-linux-ppc64-gnu')
-        const bindingPackageVersion = require('specado-linux-ppc64-gnu/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-linux-ppc64-gnu')
+        const bindingPackageVersion = require('specado-temp-linux-ppc64-gnu/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -405,10 +405,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-linux-s390x-gnu')
-        const bindingPackageVersion = require('specado-linux-s390x-gnu/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-linux-s390x-gnu')
+        const bindingPackageVersion = require('specado-temp-linux-s390x-gnu/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -425,10 +425,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-openharmony-arm64')
-        const bindingPackageVersion = require('specado-openharmony-arm64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-openharmony-arm64')
+        const bindingPackageVersion = require('specado-temp-openharmony-arm64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -441,10 +441,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-openharmony-x64')
-        const bindingPackageVersion = require('specado-openharmony-x64/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-openharmony-x64')
+        const bindingPackageVersion = require('specado-temp-openharmony-x64/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -457,10 +457,10 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('specado-openharmony-arm')
-        const bindingPackageVersion = require('specado-openharmony-arm/package.json').version
-        if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('specado-temp-openharmony-arm')
+        const bindingPackageVersion = require('specado-temp-openharmony-arm/package.json').version
+        if (bindingPackageVersion !== '0.1.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.1.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -486,7 +486,7 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
   }
   if (!nativeBinding) {
     try {
-      nativeBinding = require('specado-wasm32-wasi')
+      nativeBinding = require('specado-temp-wasm32-wasi')
     } catch (err) {
       if (process.env.NAPI_RS_FORCE_WASI) {
         loadErrors.push(err)
@@ -511,6 +511,10 @@ module.exports = nativeBinding
 module.exports.Chat = nativeBinding.Chat
 module.exports.ChatCompletions = nativeBinding.ChatCompletions
 module.exports.Client = nativeBinding.Client
+module.exports.compareCapabilities = nativeBinding.compareCapabilities
 module.exports.createMessage = nativeBinding.createMessage
+module.exports.getAnthropicManifest = nativeBinding.getAnthropicManifest
+module.exports.getModelCapabilities = nativeBinding.getModelCapabilities
+module.exports.getOpenaiManifest = nativeBinding.getOpenaiManifest
 module.exports.helloWorld = nativeBinding.helloWorld
 module.exports.version = nativeBinding.version

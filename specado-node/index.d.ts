@@ -40,6 +40,9 @@ export interface Choice {
   finishReason?: string
 }
 
+/** Compare two capabilities and return lossiness report */
+export declare function compareCapabilities(sourceJson: string, targetJson: string): string
+
 /** Create a new message */
 export declare function createMessage(role: string, content: string): Message
 
@@ -50,6 +53,15 @@ export interface Extensions {
   attempts: number
   metadata: Record<string, string>
 }
+
+/** Get Anthropic provider manifest as JSON object */
+export declare function getAnthropicManifest(): string
+
+/** Get model capabilities for a specific provider and model */
+export declare function getModelCapabilities(provider: string, modelId: string): string | null
+
+/** Get OpenAI provider manifest as JSON object */
+export declare function getOpenaiManifest(): string
 
 /** Returns a hello world message from the Specado core library. */
 export declare function helloWorld(): string

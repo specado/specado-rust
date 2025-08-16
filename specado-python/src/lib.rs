@@ -441,6 +441,8 @@ fn version() -> PyResult<&'static str> {
     Ok(specado_core::version())
 }
 
+mod capabilities;
+
 /// Main module initialization for Python bindings.
 #[pymodule]
 fn specado(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -456,6 +458,9 @@ fn specado(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Choice>()?;
     m.add_class::<Chat>()?;
     m.add_class::<ChatCompletions>()?;
+    
+    // Add capability functions
+    capabilities::register_capabilities(m)?;
     
     Ok(())
 }

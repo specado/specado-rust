@@ -11,6 +11,7 @@ pub mod modality;
 pub mod constraints;
 pub mod comparison;
 pub mod provider_manifest;
+pub mod ffi;
 
 pub use modality::{Modality, ModalitySupport};
 pub use constraints::{Constraints, TokenLimits, RateLimits};
