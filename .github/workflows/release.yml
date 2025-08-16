@@ -90,7 +90,7 @@ jobs:
           VERSION="${{ needs.validate-version.outputs.version }}"
           if [[ "$VERSION" == *"-"* ]]; then
             cargo install cargo-edit
-            cargo set-version -p specado-python --workspace "$VERSION"
+            cargo set-version --workspace "$VERSION"
             echo "Updated Cargo.toml version to: $VERSION"
           fi
         shell: bash
@@ -101,7 +101,7 @@ jobs:
           $VERSION = "${{ needs.validate-version.outputs.version }}"
           if ($VERSION -match "-") {
             cargo install cargo-edit
-            cargo set-version -p specado-python --workspace "$VERSION"
+            cargo set-version --workspace "$VERSION"
             echo "Updated Cargo.toml version to: $VERSION"
           }
         shell: powershell
