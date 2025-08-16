@@ -278,7 +278,8 @@ jobs:
         run: |
           # Update package.json to match the exact tag version (including pre-release suffix)
           VERSION="${{ needs.validate-version.outputs.version }}"
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          # Directly update package.json without running npm version script
+          npm pkg set version="$VERSION"
           echo "Updated package.json version to: $VERSION"
       
       - name: Install dependencies
