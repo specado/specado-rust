@@ -4,6 +4,7 @@
 
 pub mod capabilities;
 pub mod config;
+pub mod http;
 pub mod protocol;
 pub mod providers;
 

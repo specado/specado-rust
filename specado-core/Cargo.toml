@@ -24,6 +24,8 @@ serde_yaml = "0.9"
 regex = "1.11"
 url = "2.5"
 rand = "0.8"
+reqwest = { version = "0.12", features = ["json", "gzip", "rustls-tls"] }
+uuid = { version = "1.12", features = ["v4", "serde"] }
 
 [dev-dependencies]
 criterion = { workspace = true }

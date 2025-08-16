@@ -144,16 +144,23 @@ pub struct PrimaryWithFallbacks {
     
     /// Retry policy for transient errors
     retry_policy: Option<crate::providers::retry::RetryPolicy>,
+    
+    /// HTTP client for making requests
+    http_client: crate::http::client::HttpClient,
 }
 
 impl PrimaryWithFallbacks {
     /// Create a new primary with fallbacks router
     pub fn new(primary: Box<dyn Provider>, fallbacks: Vec<Box<dyn Provider>>) -> Self {
+        let http_client = crate::http::client::HttpClient::new()
+            .expect("Failed to create HTTP client");
+        
         Self {
             primary,
             fallbacks,
             track_metadata: true,
             retry_policy: Some(crate::providers::retry::RetryPolicy::default()),
+            http_client,
         }
     }
     
@@ -176,13 +183,13 @@ impl PrimaryWithFallbacks {
     }
     
     /// Execute request against a specific provider with retry logic (simplified for MVP)
-    /// Returns: (result, errors, provider_tried_count, delay_ms)
+    /// Returns: (response, transform_result, errors, provider_tried_count, delay_ms)
     /// Note: provider_tried_count is always 1 (we tried this provider once)
     async fn execute_with_retry(
         &self,
         request: &ChatRequest,
         provider: &Box<dyn Provider>,
-    ) -> (Option<TransformResult>, Vec<ProviderError>, u32, u64) {
+    ) -> (Option<ChatResponse>, Option<TransformResult>, Vec<ProviderError>, u32, u64) {
         let mut attempts = 0;
         let mut total_delay_ms = 0;
         let mut error_history = Vec::new();
@@ -195,9 +202,9 @@ impl PrimaryWithFallbacks {
         };
         
         while attempts < max_attempts {
-            match self.execute_with_provider(request, provider) {
-                Ok(result) => {
-                    return (Some(result), error_history, 1, total_delay_ms);
+            match self.execute_with_provider(request, provider).await {
+                Ok((response, transform_result)) => {
+                    return (Some(response), Some(transform_result), error_history, 1, total_delay_ms);
                 }
                 Err(error) => {
                     error_history.push(error.clone());
@@ -220,68 +227,34 @@ impl PrimaryWithFallbacks {
             }
         }
         
-        (None, error_history, 1, total_delay_ms)
+        (None, None, error_history, 1, total_delay_ms)
     }
     
     /// Execute request against a specific provider (single attempt)
-    fn execute_with_provider(
+    async fn execute_with_provider(
         &self,
         request: &ChatRequest,
         provider: &Box<dyn Provider>,
-    ) -> Result<TransformResult, ProviderError> {
-        // Use the transformation engine to prepare the request
-        use crate::providers::TransformationEngine;
-        use crate::providers::adapter::ProviderType;
+    ) -> Result<(ChatResponse, TransformResult), ProviderError> {
+        use crate::http::{CallKind, HttpExecutor, RequestOptions};
         
-        // For MVP, we assume source is OpenAI format
-        let source = ProviderType::OpenAI.create_provider();
+        // Create request options with a new request ID
+        let options = RequestOptions::new(CallKind::Chat);
         
-        // Clone the provider box to create a new owned box
-        // This is a workaround since we can't clone trait objects directly
-        // In production, we'd use Arc<dyn Provider> for shared ownership
-        let target = match provider.name() {
-            "openai" => ProviderType::OpenAI.create_provider(),
-            "anthropic" => ProviderType::Anthropic.create_provider(),
-            _ => ProviderType::OpenAI.create_provider(),
+        // Execute the HTTP request
+        let response = self.http_client
+            .execute_json(provider.as_ref(), request.clone(), options)
+            .await?;
+        
+        // Create a TransformResult for tracking
+        // Note: In a full implementation, we'd track actual transformations done by the provider
+        let transform_result = TransformResult {
+            transformed: request.clone(),
+            lossy: false,
+            reasons: vec![],
         };
         
-        // Create transformation engine
-        let engine = TransformationEngine::new(source, target);
-        
-        // Transform the request
-        let transform_result = engine.transform_request(request.clone());
-        
-        // TODO: Execute actual HTTP request and populate response field
-        // For MVP, we simulate success if transformation worked
-        // In Week 3, this will make real HTTP calls and return ChatResponse
-        
-        // Simulate some failure scenarios for testing
-        // Only fail on the first provider to test fallback behavior
-        if provider.name() == "openai" {
-            if request.model.contains("timeout-test") {
-                return Err(ProviderError::Timeout);
-            }
-            
-            if request.model.contains("rate-limit-test") {
-                return Err(ProviderError::RateLimit {
-                    retry_after: Some(Duration::from_secs(5)),
-                });
-            }
-            
-            if request.model.contains("server-error-test") {
-                return Err(ProviderError::ServerError {
-                    status_code: 503,
-                    message: "Service temporarily unavailable".to_string(),
-                });
-            }
-        }
-        
-        // Auth errors fail on all providers
-        if request.model.contains("auth-error-test") {
-            return Err(ProviderError::AuthenticationError);
-        }
-        
-        Ok(transform_result)
+        Ok((response, transform_result))
     }
 }
 
@@ -300,13 +273,14 @@ impl RoutingStrategy for PrimaryWithFallbacks {
         
         // Try primary provider first with retry logic
         let primary_name = self.primary.name().to_string();
-        let (transform_opt, errors, attempts, delay_ms) = self.execute_with_retry(&request, &self.primary).await;
+        let (response_opt, transform_opt, errors, attempts, delay_ms) = self.execute_with_retry(&request, &self.primary).await;
         
         result.attempts += attempts as usize;
         
-        if let Some(transform_result) = transform_opt {
+        if let Some(response) = response_opt {
                 // Primary succeeded
-                result.transform_result = Some(transform_result.clone());
+                result.response = Some(response);
+                result.transform_result = transform_opt.clone();
                 result.provider_used = primary_name.clone();
                 
                 if self.track_metadata {
@@ -316,12 +290,14 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                     result.metadata.insert("retry_delay_ms".to_string(), json!(delay_ms));
                     
                     // Add transform metadata if lossy
-                    if transform_result.lossy {
-                        result.metadata.insert("transformation_lossy".to_string(), json!(true));
-                        result.metadata.insert(
-                            "lossy_reasons".to_string(),
-                            json!(transform_result.reasons),
-                        );
+                    if let Some(ref transform_result) = result.transform_result {
+                        if transform_result.lossy {
+                            result.metadata.insert("transformation_lossy".to_string(), json!(true));
+                            result.metadata.insert(
+                                "lossy_reasons".to_string(),
+                                json!(transform_result.reasons),
+                            );
+                        }
                     }
                 }
                 
@@ -340,13 +316,14 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                 // Try fallbacks
                 for (idx, fallback) in self.fallbacks.iter().enumerate() {
                     let fallback_name = fallback.name().to_string();
-                    let (transform_opt, fb_errors, fb_attempts, _fb_delay_ms) = self.execute_with_retry(&request, fallback).await;
+                    let (response_opt, transform_opt, fb_errors, fb_attempts, _fb_delay_ms) = self.execute_with_retry(&request, fallback).await;
                     
                     result.attempts += fb_attempts as usize;
                     
-                    if let Some(transform_result) = transform_opt {
+                    if let Some(response) = response_opt {
                             // Fallback succeeded
-                            result.transform_result = Some(transform_result.clone());
+                            result.response = Some(response);
+                            result.transform_result = transform_opt.clone();
                             result.provider_used = fallback_name.clone();
                             result.used_fallback = true;
                             
@@ -362,12 +339,14 @@ impl RoutingStrategy for PrimaryWithFallbacks {
                                 );
                                 
                                 // Add transform metadata if lossy
-                                if transform_result.lossy {
-                                    result.metadata.insert("transformation_lossy".to_string(), json!(true));
-                                    result.metadata.insert(
-                                        "lossy_reasons".to_string(),
-                                        json!(transform_result.reasons),
-                                    );
+                                if let Some(ref transform_result) = result.transform_result {
+                                    if transform_result.lossy {
+                                        result.metadata.insert("transformation_lossy".to_string(), json!(true));
+                                        result.metadata.insert(
+                                            "lossy_reasons".to_string(),
+                                            json!(transform_result.reasons),
+                                        );
+                                    }
                                 }
                             }
                             
