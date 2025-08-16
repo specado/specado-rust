@@ -246,43 +246,50 @@ impl ChatCompletions {
             metadata_internal: result.metadata.clone(),
         })?;
         
-        // Create message from transform result or mock
-        let response_content = if let Some(_transform) = result.transform_result {
-            format!("Response from {} (transformed)", result.provider_used)
-        } else {
-            format!("Response from {}", result.provider_used)
+        // Extract actual response from routing result
+        let response = result.response
+            .ok_or_else(|| SpecadoError::RuntimeError("No response received from provider".to_string()))?;
+        
+        // Convert the first choice to Python format
+        let first_choice = response.choices.first()
+            .ok_or_else(|| SpecadoError::RuntimeError("No choices in response".to_string()))?;
+        
+        // Extract message content
+        let message_content = match &first_choice.message.content {
+            specado_core::protocol::types::MessageContent::Text(text) => text.clone(),
+            specado_core::protocol::types::MessageContent::Parts(_) => {
+                // For multimodal, just use a placeholder for now
+                "[Multimodal content]".to_string()
+            }
         };
         
         let message = Py::new(py, Message {
             role: "assistant".to_string(),
-            content: response_content,
+            content: message_content,
         })?;
         
         // Create choice
         let choice = Choice {
-            index: 0,
+            index: first_choice.index,
             message,
-            finish_reason: Some("stop".to_string()),
+            finish_reason: first_choice.finish_reason.clone(),
         };
         
         // Create choices list 
         let choice_py = Py::new(py, choice)?;
         let choices_list = PyList::new(py, vec![choice_py])?;
         
-        // Create response
-        let response = ChatCompletionResponse {
-            id: format!("chatcmpl-{}", uuid()),
-            object: "chat.completion".to_string(),
-            created: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-            model: request_model,
+        // Create response using actual response data
+        let response_obj = ChatCompletionResponse {
+            id: response.id.clone(),
+            object: response.object.clone(),
+            created: response.created as u64,
+            model: response.model.clone(),
             choices: choices_list.into(),
             extensions,
         };
         
-        Ok(response)
+        Ok(response_obj)
     }
     
     /// Create a chat completion (async version for Python asyncio)
