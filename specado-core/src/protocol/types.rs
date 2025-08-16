@@ -626,7 +626,6 @@ impl ChatRequest {
     }
 }
 
-
 impl MessageContent {
     /// Check if content is empty
     pub fn is_empty(&self) -> bool {

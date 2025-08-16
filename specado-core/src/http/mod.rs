@@ -43,16 +43,16 @@ impl CallKind {
 pub struct RequestOptions {
     /// Type of API call
     pub call_kind: CallKind,
-    
+
     /// Unique request ID for correlation
     pub request_id: Uuid,
-    
+
     /// Request timeout
     pub timeout: Duration,
-    
+
     /// Optional idempotency key for safe retries
     pub idempotency_key: Option<String>,
-    
+
     /// Optional context ID for correlation across requests
     pub context_id: Option<String>,
 }
@@ -78,19 +78,19 @@ impl RequestOptions {
             ..Default::default()
         }
     }
-    
+
     /// Set the timeout for this request
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
-    
+
     /// Set an idempotency key for safe retries
     pub fn with_idempotency_key(mut self, key: String) -> Self {
         self.idempotency_key = Some(key);
         self
     }
-    
+
     /// Set a context ID for correlation
     pub fn with_context_id(mut self, id: String) -> Self {
         self.context_id = Some(id);
@@ -103,7 +103,7 @@ impl RequestOptions {
 pub struct StreamDelta {
     /// Delta content
     pub content: String,
-    
+
     /// Whether this is the final delta
     pub is_final: bool,
 }
@@ -118,7 +118,7 @@ pub trait HttpExecutor: Send + Sync {
         request: ChatRequest,
         options: RequestOptions,
     ) -> Result<ChatResponse, ProviderError>;
-    
+
     /// Execute a streaming request (Phase 2 stub)
     async fn execute_stream(
         &self,

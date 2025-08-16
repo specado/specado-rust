@@ -221,7 +221,7 @@ mod tests {
             redact_by_field_name("auth_token", "bearer-xyz"),
             "[REDACTED]"
         );
-        
+
         // Reset to default
         unsafe {
             set_redaction_policy(RedactionPolicy::Full);

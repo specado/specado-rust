@@ -1,5 +1,5 @@
 //! Provider capability taxonomy for spec-driven LLM integration
-//! 
+//!
 //! This module defines the structured model for provider capabilities,
 //! including multimodal support, function calling, JSON mode, temperature
 //! control, and provider-specific constraints.
@@ -7,38 +7,38 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-pub mod modality;
-pub mod constraints;
 pub mod comparison;
-pub mod provider_manifest;
+pub mod constraints;
 pub mod ffi;
+pub mod modality;
+pub mod provider_manifest;
 
-pub use modality::{Modality, ModalitySupport};
-pub use constraints::{Constraints, TokenLimits, RateLimits};
 pub use comparison::{CapabilityComparison, LossinessReport, LossinessType};
-pub use provider_manifest::{ProviderManifest, ProviderInfo};
+pub use constraints::{Constraints, RateLimits, TokenLimits};
+pub use modality::{Modality, ModalitySupport};
+pub use provider_manifest::{ProviderInfo, ProviderManifest};
 
 /// Core capability definition for LLM providers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Capability {
     /// Version of the capability schema
     pub version: String,
-    
+
     /// Supported input/output modalities
     pub modalities: ModalitySupport,
-    
+
     /// Model features and capabilities
     pub features: ModelFeatures,
-    
+
     /// Control parameters supported
     pub parameters: ControlParameters,
-    
+
     /// Role constraints
     pub roles: RoleSupport,
-    
+
     /// Provider-specific constraints
     pub constraints: Constraints,
-    
+
     /// Custom/experimental capabilities
     pub extensions: Extensions,
 }
@@ -48,28 +48,28 @@ pub struct Capability {
 pub struct ModelFeatures {
     /// Function/tool calling support
     pub function_calling: bool,
-    
+
     /// JSON mode for structured output
     pub json_mode: bool,
-    
+
     /// Streaming response support
     pub streaming: bool,
-    
+
     /// Log probabilities support
     pub logprobs: bool,
-    
+
     /// Multiple response generation (n > 1)
     pub multiple_responses: bool,
-    
+
     /// Stop sequences support
     pub stop_sequences: bool,
-    
+
     /// Seed parameter for deterministic output
     pub seed_support: bool,
-    
+
     /// Tool use (Anthropic-style tools)
     pub tool_use: bool,
-    
+
     /// Vision capabilities (for analyzing images)
     pub vision: bool,
 }
@@ -79,22 +79,22 @@ pub struct ModelFeatures {
 pub struct ControlParameters {
     /// Temperature control (0.0-2.0 typically)
     pub temperature: ParameterSupport<f32>,
-    
+
     /// Top-p nucleus sampling
     pub top_p: ParameterSupport<f32>,
-    
+
     /// Top-k sampling
     pub top_k: ParameterSupport<i32>,
-    
+
     /// Maximum tokens to generate
     pub max_tokens: ParameterSupport<i32>,
-    
+
     /// Frequency penalty (-2.0 to 2.0)
     pub frequency_penalty: ParameterSupport<f32>,
-    
+
     /// Presence penalty (-2.0 to 2.0)
     pub presence_penalty: ParameterSupport<f32>,
-    
+
     /// Repetition penalty (some providers)
     pub repetition_penalty: ParameterSupport<f32>,
 }
@@ -113,19 +113,19 @@ pub struct ParameterSupport<T> {
 pub struct RoleSupport {
     /// System role for instructions
     pub system: bool,
-    
+
     /// User role for input
     pub user: bool,
-    
+
     /// Assistant role for model responses
     pub assistant: bool,
-    
+
     /// Function/tool role for function results
     pub function: bool,
-    
+
     /// Tool role (Anthropic-style)
     pub tool: bool,
-    
+
     /// Custom roles
     pub custom_roles: HashSet<String>,
 }
@@ -135,7 +135,7 @@ pub struct RoleSupport {
 pub struct Extensions {
     /// Provider-specific custom capabilities
     pub custom: std::collections::HashMap<String, serde_json::Value>,
-    
+
     /// Experimental features that may not be stable
     pub experimental: HashSet<String>,
 }
@@ -222,12 +222,12 @@ impl Capability {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Builder pattern for capability configuration
     pub fn builder() -> CapabilityBuilder {
         CapabilityBuilder::new()
     }
-    
+
     /// Check if a specific feature is supported
     pub fn supports_feature(&self, feature: &str) -> bool {
         match feature {
@@ -243,7 +243,7 @@ impl Capability {
             _ => self.extensions.experimental.contains(feature),
         }
     }
-    
+
     /// Compare capabilities with another provider
     pub fn compare(&self, other: &Capability) -> CapabilityComparison {
         CapabilityComparison::compare(self, other)
@@ -261,37 +261,37 @@ impl CapabilityBuilder {
             capability: Capability::default(),
         }
     }
-    
+
     pub fn version(mut self, version: impl Into<String>) -> Self {
         self.capability.version = version.into();
         self
     }
-    
+
     pub fn with_modalities(mut self, modalities: ModalitySupport) -> Self {
         self.capability.modalities = modalities;
         self
     }
-    
+
     pub fn with_features(mut self, features: ModelFeatures) -> Self {
         self.capability.features = features;
         self
     }
-    
+
     pub fn with_parameters(mut self, parameters: ControlParameters) -> Self {
         self.capability.parameters = parameters;
         self
     }
-    
+
     pub fn with_roles(mut self, roles: RoleSupport) -> Self {
         self.capability.roles = roles;
         self
     }
-    
+
     pub fn with_constraints(mut self, constraints: Constraints) -> Self {
         self.capability.constraints = constraints;
         self
     }
-    
+
     pub fn build(self) -> Capability {
         self.capability
     }
@@ -300,7 +300,7 @@ impl CapabilityBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_capability_default() {
         let cap = Capability::default();
@@ -308,7 +308,7 @@ mod tests {
         assert!(!cap.features.function_calling);
         assert!(!cap.features.json_mode);
     }
-    
+
     #[test]
     fn test_capability_builder() {
         let cap = Capability::builder()
@@ -319,18 +319,20 @@ mod tests {
                 ..Default::default()
             })
             .build();
-        
+
         assert_eq!(cap.version, "1.0.0");
         assert!(cap.features.function_calling);
         assert!(cap.features.json_mode);
     }
-    
+
     #[test]
     fn test_supports_feature() {
         let mut cap = Capability::default();
         cap.features.function_calling = true;
-        cap.extensions.experimental.insert("custom_feature".to_string());
-        
+        cap.extensions
+            .experimental
+            .insert("custom_feature".to_string());
+
         assert!(cap.supports_feature("function_calling"));
         assert!(!cap.supports_feature("json_mode"));
         assert!(cap.supports_feature("custom_feature"));

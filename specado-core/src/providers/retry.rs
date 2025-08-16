@@ -4,31 +4,31 @@
 //! jitter, and intelligent error mapping for provider operations.
 
 use crate::providers::routing::ProviderError;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use rand::Rng;
 
 /// Configuration for retry behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetryPolicy {
     /// Maximum number of retry attempts (not including the initial attempt)
     pub max_retries: u32,
-    
+
     /// Initial delay before first retry (milliseconds)
     pub initial_delay_ms: u64,
-    
+
     /// Maximum delay between retries (milliseconds)
     pub max_delay_ms: u64,
-    
+
     /// Base for exponential backoff (e.g., 2.0 for doubling)
     pub exponential_base: f64,
-    
+
     /// Jitter factor (0.0 to 1.0) to randomize delays
     pub jitter_factor: f64,
-    
+
     /// Whether to respect retry-after headers
     pub respect_retry_after: bool,
-    
+
     /// Maximum total time to spend retrying (milliseconds)
     pub timeout_ms: Option<u64>,
 }
@@ -55,7 +55,7 @@ impl RetryPolicy {
             ..Default::default()
         }
     }
-    
+
     /// Create an aggressive retry policy for critical operations
     pub fn aggressive() -> Self {
         Self {
@@ -68,7 +68,7 @@ impl RetryPolicy {
             timeout_ms: Some(60_000), // 1 minute
         }
     }
-    
+
     /// Create a conservative retry policy to minimize load
     pub fn conservative() -> Self {
         Self {
@@ -81,7 +81,7 @@ impl RetryPolicy {
             timeout_ms: Some(20_000), // 20 seconds
         }
     }
-    
+
     /// Create a policy with no retries
     pub fn no_retry() -> Self {
         Self {
@@ -89,7 +89,7 @@ impl RetryPolicy {
             ..Default::default()
         }
     }
-    
+
     /// Calculate the delay for a given retry attempt
     pub fn calculate_delay(&self, attempt: u32, error: &ProviderError) -> Duration {
         // Check for retry-after header first
@@ -98,11 +98,11 @@ impl RetryPolicy {
                 return retry_after;
             }
         }
-        
+
         // Calculate exponential backoff
         let base_delay = self.initial_delay_ms as f64 * self.exponential_base.powi(attempt as i32);
         let capped_delay = base_delay.min(self.max_delay_ms as f64);
-        
+
         // Add jitter
         let delay_with_jitter = if self.jitter_factor > 0.0 {
             let mut rng = rand::thread_rng();
@@ -112,17 +112,17 @@ impl RetryPolicy {
         } else {
             capped_delay
         };
-        
+
         Duration::from_millis(delay_with_jitter as u64)
     }
-    
+
     /// Check if we should retry based on the error and attempt count
     pub fn should_retry(&self, error: &ProviderError, attempt: u32) -> bool {
         // Check if we've exceeded max retries
         if attempt >= self.max_retries {
             return false;
         }
-        
+
         // Check if the error is retryable
         error.is_retryable()
     }
@@ -133,16 +133,16 @@ impl RetryPolicy {
 pub struct RetryResult<T> {
     /// The successful result (if any)
     pub result: Option<T>,
-    
+
     /// Number of retry attempts made
     pub attempts: u32,
-    
+
     /// Total time spent retrying
     pub total_delay_ms: u64,
-    
+
     /// The final error (if failed)
     pub final_error: Option<ProviderError>,
-    
+
     /// All errors encountered during retries
     pub error_history: Vec<ProviderError>,
 }
@@ -157,7 +157,7 @@ impl RetryExecutor {
     pub fn new(policy: RetryPolicy) -> Self {
         Self { policy }
     }
-    
+
     /// Execute an operation with retry logic
     pub async fn execute<F, T, Fut>(&self, mut operation: F) -> RetryResult<T>
     where
@@ -168,7 +168,7 @@ impl RetryExecutor {
         let mut total_delay_ms = 0;
         let mut error_history = Vec::new();
         let start_time = std::time::Instant::now();
-        
+
         loop {
             match operation().await {
                 Ok(result) => {
@@ -182,7 +182,7 @@ impl RetryExecutor {
                 }
                 Err(error) => {
                     error_history.push(error.clone());
-                    
+
                     // Check if we should retry
                     if !self.policy.should_retry(&error, attempts) {
                         return RetryResult {
@@ -193,7 +193,7 @@ impl RetryExecutor {
                             error_history,
                         };
                     }
-                    
+
                     // Check timeout
                     if let Some(timeout_ms) = self.policy.timeout_ms {
                         if start_time.elapsed().as_millis() > timeout_ms as u128 {
@@ -206,11 +206,11 @@ impl RetryExecutor {
                             };
                         }
                     }
-                    
+
                     // Calculate and apply delay
                     let delay = self.policy.calculate_delay(attempts, &error);
                     total_delay_ms += delay.as_millis() as u64;
-                    
+
                     tokio::time::sleep(delay).await;
                     attempts += 1;
                 }
@@ -249,7 +249,7 @@ impl ErrorMapper {
             },
         }
     }
-    
+
     /// Parse retry-after value from response body or headers
     fn parse_retry_after(body: Option<&str>) -> Option<Duration> {
         // Simple parsing - in production would parse JSON response
@@ -263,49 +263,50 @@ impl ErrorMapper {
         }
         None
     }
-    
+
     /// Extract retry seconds from text (simplified for MVP)
     fn extract_retry_seconds(text: &str) -> Option<u64> {
         // Look for patterns like "retry_after: 5" or "retry-after: 5"
         for part in text.split_whitespace() {
             if let Ok(num) = part.parse::<u64>() {
-                if num > 0 && num < 3600 { // Reasonable retry delay
+                if num > 0 && num < 3600 {
+                    // Reasonable retry delay
                     return Some(num);
                 }
             }
         }
         None
     }
-    
+
     /// Map provider-specific error messages to common types
     pub fn from_provider_error(provider: &str, error_msg: &str) -> ProviderError {
         let lower_msg = error_msg.to_lowercase();
-        
+
         // Common patterns across providers
         if lower_msg.contains("rate limit") || lower_msg.contains("too many requests") {
             return ProviderError::RateLimit { retry_after: None };
         }
-        
+
         if lower_msg.contains("timeout") || lower_msg.contains("timed out") {
             return ProviderError::Timeout;
         }
-        
+
         if lower_msg.contains("unauthorized") || lower_msg.contains("authentication") {
             return ProviderError::AuthenticationError;
         }
-        
+
         if lower_msg.contains("invalid request") || lower_msg.contains("bad request") {
             return ProviderError::InvalidRequest {
                 message: error_msg.to_string(),
             };
         }
-        
+
         if lower_msg.contains("model") && lower_msg.contains("not found") {
             return ProviderError::ModelNotAvailable {
                 model: "unknown".to_string(),
             };
         }
-        
+
         // Provider-specific patterns
         match provider {
             "openai" => {
@@ -349,7 +350,7 @@ impl ErrorMapper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_retry_policy_defaults() {
         let policy = RetryPolicy::default();
@@ -357,7 +358,7 @@ mod tests {
         assert_eq!(policy.initial_delay_ms, 100);
         assert_eq!(policy.exponential_base, 2.0);
     }
-    
+
     #[test]
     fn test_exponential_backoff_calculation() {
         let policy = RetryPolicy {
@@ -369,91 +370,94 @@ mod tests {
             respect_retry_after: false,
             timeout_ms: None,
         };
-        
+
         let error = ProviderError::Timeout;
-        
+
         // First retry: 100 * 2^0 = 100ms
         let delay0 = policy.calculate_delay(0, &error);
         assert_eq!(delay0.as_millis(), 100);
-        
+
         // Second retry: 100 * 2^1 = 200ms
         let delay1 = policy.calculate_delay(1, &error);
         assert_eq!(delay1.as_millis(), 200);
-        
+
         // Third retry: 100 * 2^2 = 400ms
         let delay2 = policy.calculate_delay(2, &error);
         assert_eq!(delay2.as_millis(), 400);
-        
+
         // Fourth retry: 100 * 2^3 = 800ms (capped at max)
         let delay3 = policy.calculate_delay(3, &error);
         assert_eq!(delay3.as_millis(), 800);
-        
+
         // Fifth retry: would be 1600ms but capped at 1000ms
         let delay4 = policy.calculate_delay(4, &error);
         assert_eq!(delay4.as_millis(), 1000);
     }
-    
+
     #[test]
     fn test_retry_after_respected() {
         let policy = RetryPolicy {
             respect_retry_after: true,
             ..Default::default()
         };
-        
+
         let error = ProviderError::RateLimit {
             retry_after: Some(Duration::from_secs(5)),
         };
-        
+
         let delay = policy.calculate_delay(0, &error);
         assert_eq!(delay.as_secs(), 5);
     }
-    
+
     #[test]
     fn test_should_retry_logic() {
         let policy = RetryPolicy::new(2);
-        
+
         // Retryable errors should be retried
         let timeout = ProviderError::Timeout;
         assert!(policy.should_retry(&timeout, 0));
         assert!(policy.should_retry(&timeout, 1));
         assert!(!policy.should_retry(&timeout, 2)); // Exceeded max
-        
+
         // Non-retryable errors should not be retried
         let auth_error = ProviderError::AuthenticationError;
         assert!(!policy.should_retry(&auth_error, 0));
     }
-    
+
     #[test]
     fn test_error_mapper_status_codes() {
         assert!(matches!(
             ErrorMapper::from_status_code(401, None),
             ProviderError::AuthenticationError
         ));
-        
+
         assert!(matches!(
             ErrorMapper::from_status_code(429, None),
             ProviderError::RateLimit { .. }
         ));
-        
+
         assert!(matches!(
             ErrorMapper::from_status_code(500, Some("Server error")),
-            ProviderError::ServerError { status_code: 500, .. }
+            ProviderError::ServerError {
+                status_code: 500,
+                ..
+            }
         ));
-        
+
         assert!(matches!(
             ErrorMapper::from_status_code(408, None),
             ProviderError::Timeout
         ));
     }
-    
+
     #[test]
     fn test_error_mapper_provider_patterns() {
         let error = ErrorMapper::from_provider_error("openai", "Rate limit exceeded");
         assert!(matches!(error, ProviderError::RateLimit { .. }));
-        
+
         let error = ErrorMapper::from_provider_error("anthropic", "overloaded");
         assert!(matches!(error, ProviderError::ServerError { .. }));
-        
+
         let error = ErrorMapper::from_provider_error("openai", "Unauthorized");
         assert!(matches!(error, ProviderError::AuthenticationError));
     }

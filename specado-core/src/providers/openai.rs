@@ -6,8 +6,8 @@
 use crate::http::CallKind;
 use crate::protocol::types::{ChatRequest, ChatResponse};
 use crate::providers::adapter::{Provider, ProviderCapabilities};
-use std::collections::HashMap;
 use serde_json::Value;
+use std::collections::HashMap;
 
 /// OpenAI provider implementation
 pub struct OpenAIProvider {
@@ -36,7 +36,7 @@ impl OpenAIProvider {
                 custom
             },
         };
-        
+
         Self { capabilities }
     }
 }
@@ -45,45 +45,45 @@ impl Provider for OpenAIProvider {
     fn name(&self) -> &str {
         "openai"
     }
-    
+
     fn capabilities(&self) -> &ProviderCapabilities {
         &self.capabilities
     }
-    
+
     fn transform_request(&self, request: ChatRequest) -> ChatRequest {
         // OpenAI uses its own format natively
         // Map any provider-specific parameters from metadata
-        
+
         // OpenAI supports seed parameter for reproducible outputs
         if let Some(_seed) = request.metadata.get("seed") {
             // The seed parameter is already in metadata, HTTP client will use it
         }
-        
+
         // OpenAI supports logprobs parameter
         if let Some(_logprobs) = request.metadata.get("logprobs") {
             // The logprobs parameter is already in metadata, HTTP client will use it
         }
-        
+
         // OpenAI uses standard "max_tokens" naming, no transformation needed
-        
+
         request
     }
-    
+
     fn transform_response(&self, response: ChatResponse) -> ChatResponse {
         // OpenAI response is already in our canonical format
         response
     }
-    
+
     fn base_url(&self) -> &str {
         "https://api.openai.com/v1"
     }
-    
+
     fn endpoint(&self, call_kind: CallKind) -> &str {
         match call_kind {
             CallKind::Chat => "/chat/completions",
         }
     }
-    
+
     fn headers(&self, api_key: &str) -> HashMap<String, String> {
         let mut headers = HashMap::new();
         headers.insert("Authorization".to_string(), format!("Bearer {}", api_key));

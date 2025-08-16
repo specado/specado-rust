@@ -1,10 +1,10 @@
 //! FFI bindings for capability taxonomy
 
+use serde_json;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use serde_json;
 
-use crate::capabilities::{ProviderManifest, Capability};
+use crate::capabilities::{Capability, ProviderManifest};
 
 /// Get OpenAI provider manifest as JSON string
 /// The caller must free the returned string using specado_free_string
@@ -45,29 +45,29 @@ pub unsafe extern "C" fn specado_compare_capabilities(
     if source_json.is_null() || target_json.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let source_str = match CStr::from_ptr(source_json).to_str() {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let target_str = match CStr::from_ptr(target_json).to_str() {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let source: Capability = match serde_json::from_str(source_str) {
         Ok(cap) => cap,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let target: Capability = match serde_json::from_str(target_str) {
         Ok(cap) => cap,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let comparison = source.compare(&target);
-    
+
     match serde_json::to_string(&comparison) {
         Ok(json) => match CString::new(json) {
             Ok(c_str) => c_str.into_raw(),
@@ -88,33 +88,31 @@ pub unsafe extern "C" fn specado_get_model_capabilities(
     if provider.is_null() || model_id.is_null() {
         return std::ptr::null_mut();
     }
-    
+
     let provider_str = match CStr::from_ptr(provider).to_str() {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let model_str = match CStr::from_ptr(model_id).to_str() {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
-    
+
     let manifest = match provider_str.to_lowercase().as_str() {
         "openai" => ProviderManifest::openai(),
         "anthropic" => ProviderManifest::anthropic(),
         _ => return std::ptr::null_mut(),
     };
-    
+
     match manifest.get_model_capabilities(model_str) {
-        Some(capabilities) => {
-            match serde_json::to_string(capabilities) {
-                Ok(json) => match CString::new(json) {
-                    Ok(c_str) => c_str.into_raw(),
-                    Err(_) => std::ptr::null_mut(),
-                },
+        Some(capabilities) => match serde_json::to_string(capabilities) {
+            Ok(json) => match CString::new(json) {
+                Ok(c_str) => c_str.into_raw(),
                 Err(_) => std::ptr::null_mut(),
-            }
-        }
+            },
+            Err(_) => std::ptr::null_mut(),
+        },
         None => std::ptr::null_mut(),
     }
 }

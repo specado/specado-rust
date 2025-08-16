@@ -5,21 +5,24 @@
 //! tracking lossiness of transformations.
 
 pub mod adapter;
-pub mod transform;
-pub mod openai;
 pub mod anthropic;
-pub mod routing;
+pub mod json_transform;
+pub mod openai;
 pub mod retry;
+pub mod routing;
+pub mod transform;
 
 pub use adapter::{Provider, ProviderCapabilities, ProviderType};
-pub use transform::{TransformResult, TransformationEngine, LossinessReason, transform_request};
+pub use transform::{transform_request, LossinessReason, TransformResult, TransformationEngine};
 
 // Re-export concrete providers
-pub use openai::OpenAIProvider;
 pub use anthropic::AnthropicProvider;
+pub use openai::OpenAIProvider;
 
 // Re-export routing types
-pub use routing::{RoutingStrategy, PrimaryWithFallbacks, RoutingResult, ProviderError, RoutingBuilder};
+pub use routing::{
+    PrimaryWithFallbacks, ProviderError, RoutingBuilder, RoutingResult, RoutingStrategy,
+};
 
 // Re-export retry types
-pub use retry::{RetryPolicy, RetryExecutor, RetryResult, ErrorMapper};
+pub use retry::{ErrorMapper, RetryExecutor, RetryPolicy, RetryResult};

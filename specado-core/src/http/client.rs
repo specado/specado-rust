@@ -6,6 +6,7 @@ use crate::providers::adapter::Provider;
 use crate::providers::routing::ProviderError;
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder, Response};
+use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
@@ -21,7 +22,7 @@ const USER_AGENT: &str = "specado/0.1.0";
 pub struct HttpClient {
     /// The underlying reqwest client
     client: Arc<Client>,
-    
+
     /// Maximum response size to prevent OOM
     max_response_size: usize,
 }
@@ -38,13 +39,13 @@ impl HttpClient {
             .gzip(true)
             .build()
             .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-        
+
         Ok(Self {
             client: Arc::new(client),
             max_response_size: MAX_RESPONSE_SIZE,
         })
     }
-    
+
     /// Create a new HTTP client with custom configuration
     pub fn with_config(
         connect_timeout: Duration,
@@ -60,18 +61,18 @@ impl HttpClient {
             .gzip(true)
             .build()
             .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-        
+
         Ok(Self {
             client: Arc::new(client),
             max_response_size: MAX_RESPONSE_SIZE,
         })
     }
-    
+
     /// Build the full URL for a provider and call kind
     fn build_url(&self, provider: &dyn Provider, call_kind: CallKind) -> String {
         format!("{}{}", provider.base_url(), provider.endpoint(call_kind))
     }
-    
+
     /// Get API key from environment (temporary for MVP)
     fn get_api_key(&self, provider: &dyn Provider) -> Result<String, ProviderError> {
         // For MVP, we'll use environment variables
@@ -79,23 +80,22 @@ impl HttpClient {
         let env_var = match provider.name() {
             "openai" => "OPENAI_API_KEY",
             "anthropic" => "ANTHROPIC_API_KEY",
-            _ => return Err(ProviderError::Custom {
-                code: "UNKNOWN_PROVIDER".to_string(),
-                message: format!("Unknown provider: {}", provider.name()),
-            }),
+            _ => {
+                return Err(ProviderError::Custom {
+                    code: "UNKNOWN_PROVIDER".to_string(),
+                    message: format!("Unknown provider: {}", provider.name()),
+                })
+            }
         };
-        
+
         std::env::var(env_var).map_err(|_| ProviderError::AuthenticationError)
     }
-    
+
     /// Validate response content type
     fn validate_content_type(response: &Response) -> Result<(), ProviderError> {
         if let Some(content_type) = response.headers().get("content-type") {
-            let content_type_str = content_type
-                .to_str()
-                .unwrap_or("")
-                .to_lowercase();
-            
+            let content_type_str = content_type.to_str().unwrap_or("").to_lowercase();
+
             if !content_type_str.contains("application/json") {
                 return Err(ProviderError::Custom {
                     code: "INVALID_CONTENT_TYPE".to_string(),
@@ -103,10 +103,10 @@ impl HttpClient {
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Check response size to prevent OOM
     fn check_content_length(&self, response: &Response) -> Result<(), ProviderError> {
         if let Some(content_length) = response.content_length() {
@@ -120,7 +120,7 @@ impl HttpClient {
                 });
             }
         }
-        
+
         Ok(())
     }
 }
@@ -134,141 +134,184 @@ impl HttpExecutor for HttpClient {
         options: RequestOptions,
     ) -> Result<ChatResponse, ProviderError> {
         let request_id = options.request_id;
-        
+
         info!(
             "Executing HTTP request to {} [request_id: {}]",
             provider.name(),
             request_id
         );
-        
+
         // Get API key
         let api_key = self.get_api_key(provider)?;
-        
+
         // Build URL
         let url = self.build_url(provider, options.call_kind);
         debug!("Request URL: {}", url);
-        
-        // Transform request to provider format
-        let transformed_request = provider.transform_request(request);
-        
-        // Serialize request body
-        let body = serde_json::to_value(&transformed_request)
-            .map_err(|e| ProviderError::Custom {
-                code: "SERIALIZATION_ERROR".to_string(),
-                message: format!("Failed to serialize request: {} [request_id: {}]", e, request_id),
-            })?;
-        
+
+        // Transform request to provider-specific JSON format
+        let body = crate::providers::json_transform::request_to_provider_json(
+            request.clone(),
+            provider.name(),
+        );
+
+        debug!(
+            "Transformed request body: {}",
+            serde_json::to_string_pretty(&body).unwrap_or_default()
+        );
+
         // Build HTTP request
-        let mut req_builder = self.client
-            .post(&url)
-            .timeout(options.timeout)
-            .json(&body);
-        
+        let mut req_builder = self.client.post(&url).timeout(options.timeout).json(&body);
+
         // Add headers
         for (key, value) in provider.headers(&api_key) {
             req_builder = req_builder.header(key, value);
         }
-        
+
         // Add request ID header for correlation
         req_builder = req_builder.header("X-Request-ID", request_id.to_string());
-        
+
         // Add idempotency key if provided
         if let Some(ref idempotency_key) = options.idempotency_key {
             req_builder = req_builder.header("Idempotency-Key", idempotency_key);
         }
-        
+
         // Execute request
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| {
-                if e.is_timeout() {
-                    warn!("Request timeout for {} [request_id: {}]", provider.name(), request_id);
-                    ProviderError::Timeout
-                } else if e.is_connect() {
-                    error!("Connection error for {} [request_id: {}]: {}", provider.name(), request_id, e);
-                    ProviderError::NetworkError {
-                        message: format!("Connection failed: {} [request_id: {}]", e, request_id),
-                    }
-                } else {
-                    error!("Request error for {} [request_id: {}]: {}", provider.name(), request_id, e);
-                    ProviderError::NetworkError {
-                        message: format!("{} [request_id: {}]", e, request_id),
-                    }
+        let response = req_builder.send().await.map_err(|e| {
+            if e.is_timeout() {
+                warn!(
+                    "Request timeout for {} [request_id: {}]",
+                    provider.name(),
+                    request_id
+                );
+                ProviderError::Timeout
+            } else if e.is_connect() {
+                error!(
+                    "Connection error for {} [request_id: {}]: {}",
+                    provider.name(),
+                    request_id,
+                    e
+                );
+                ProviderError::NetworkError {
+                    message: format!("Connection failed: {} [request_id: {}]", e, request_id),
                 }
-            })?;
-        
+            } else {
+                error!(
+                    "Request error for {} [request_id: {}]: {}",
+                    provider.name(),
+                    request_id,
+                    e
+                );
+                ProviderError::NetworkError {
+                    message: format!("{} [request_id: {}]", e, request_id),
+                }
+            }
+        })?;
+
         let status = response.status();
         debug!("Response status: {} [request_id: {}]", status, request_id);
-        
+
         // Check for non-success status codes
         if !status.is_success() {
             // Capture headers for retry-after parsing
             let headers = response.headers().clone();
-            
+
             // Try to get response body for error details
-            let body = response
-                .text()
-                .await
-                .ok();
-            
+            let body = response.text().await.ok();
+
             warn!(
                 "Request failed with status {} for {} [request_id: {}]",
-                status, provider.name(), request_id
+                status,
+                provider.name(),
+                request_id
             );
-            
-            return Err(crate::http::error::map_http_error(status, Some(&headers), body, request_id));
+
+            return Err(crate::http::error::map_http_error(
+                status,
+                Some(&headers),
+                body,
+                request_id,
+            ));
         }
-        
+
         // Validate content type
         Self::validate_content_type(&response)?;
-        
+
         // Check content length
         self.check_content_length(&response)?;
-        
+
         // Parse response body
         let response_text = response
             .text()
             .await
             .map_err(|e| ProviderError::NetworkError {
-                message: format!("Failed to read response body: {} [request_id: {}]", e, request_id),
+                message: format!(
+                    "Failed to read response body: {} [request_id: {}]",
+                    e, request_id
+                ),
             })?;
-        
+
         // Check response size after reading
         if response_text.len() > self.max_response_size {
             return Err(ProviderError::Custom {
                 code: "RESPONSE_TOO_LARGE".to_string(),
                 message: format!(
                     "Response size {} exceeds maximum {} [request_id: {}]",
-                    response_text.len(), self.max_response_size, request_id
+                    response_text.len(),
+                    self.max_response_size,
+                    request_id
                 ),
             });
         }
-        
-        // Parse JSON response
-        let response_json: ChatResponse = serde_json::from_str(&response_text)
-            .map_err(|e| {
-                error!(
-                    "Failed to parse response from {} [request_id: {}]: {}",
-                    provider.name(), request_id, e
-                );
-                ProviderError::Custom {
-                    code: "PARSE_ERROR".to_string(),
-                    message: format!("Invalid response format: {} [request_id: {}]", e, request_id),
-                }
-            })?;
-        
-        // Transform response to canonical format
-        let canonical_response = provider.transform_response(response_json);
-        
+
+        // Parse JSON response as generic Value first
+        let response_json: Value = serde_json::from_str(&response_text).map_err(|e| {
+            error!(
+                "Failed to parse JSON from {} [request_id: {}]: {}",
+                provider.name(),
+                request_id,
+                e
+            );
+            ProviderError::Custom {
+                code: "PARSE_ERROR".to_string(),
+                message: format!("Invalid JSON format: {} [request_id: {}]", e, request_id),
+            }
+        })?;
+
+        debug!(
+            "Raw response JSON: {}",
+            serde_json::to_string_pretty(&response_json).unwrap_or_default()
+        );
+
+        // Transform response from provider-specific format to internal format
+        let canonical_response = crate::providers::json_transform::provider_response_to_internal(
+            response_json,
+            provider.name(),
+        )
+        .map_err(|e| {
+            error!(
+                "Failed to transform response from {} [request_id: {}]: {}",
+                provider.name(),
+                request_id,
+                e
+            );
+            ProviderError::Custom {
+                code: "TRANSFORM_ERROR".to_string(),
+                message: format!(
+                    "Failed to transform response: {} [request_id: {}]",
+                    e, request_id
+                ),
+            }
+        })?;
+
         info!(
             "Request completed successfully for {} [request_id: {}]",
-            provider.name(), request_id
+            provider.name(),
+            request_id
         );
-        
+
         Ok(canonical_response)
     }
-    
+
     async fn execute_stream(
         &self,
         provider: &dyn Provider,
@@ -278,7 +321,7 @@ impl HttpExecutor for HttpClient {
         // Phase 2 implementation stub
         // For now, return error indicating streaming not yet implemented
         let _ = (provider, request);
-        
+
         Err(ProviderError::Custom {
             code: "STREAMING_NOT_IMPLEMENTED".to_string(),
             message: format!(
