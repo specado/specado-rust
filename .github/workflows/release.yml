@@ -76,20 +76,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Setup per-OS OpenSSL env
         uses: ./.github/actions/setup-rust-env
         with:
           os: ${{ matrix.os }}
 
-      - name: Update Cargo.toml (pre-release only)
+      - name: Update Cargo.toml version (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
           if [[ "$VERSION" == *"-"* ]]; then
             cargo install cargo-edit
             cargo set-version -p specado-python --workspace "$VERSION"
-            echo "Updated workspace version to: $VERSION"
+            echo "Updated Cargo.toml version to: $VERSION"
           fi
         shell: bash
+
+      - name: Update Cargo.toml version (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $VERSION = "${{ needs.validate-version.outputs.version }}"
+          if ($VERSION -match "-") {
+            cargo install cargo-edit
+            cargo set-version -p specado-python --workspace "$VERSION"
+            echo "Updated Cargo.toml version to: $VERSION"
+          }
+        shell: powershell
 
       - uses: actions/setup-python@v5
         with:
@@ -166,6 +181,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Setup per-OS OpenSSL env
         uses: ./.github/actions/setup-rust-env
         with:
@@ -197,9 +215,10 @@ jobs:
           npm ci
           npm install -g @napi-rs/cli@latest
           if [[ "${{ matrix.cross }}" == "true" ]]; then
-            # For ARM64 cross-compilation, use napi with --zig flag
-            napi build --release --target ${{ matrix.target }} --zig
+            echo "Running cross-compilation build..."
+            napi build --release --target ${{ matrix.target }} --cross-compile
           else
+            echo "Running native build..."
             napi build --release --target ${{ matrix.target }}
           fi
         shell: bash
@@ -238,8 +257,13 @@ jobs:
             *)          echo "tag=alpha"  >> $GITHUB_OUTPUT ;;
           esac
       - name: Publish to npm
-        working-directory: specado-node
-        run: npm publish --tag ${{ steps.npm-tag.outputs.tag }}
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: |
+            cd specado-node
+            npm publish --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
