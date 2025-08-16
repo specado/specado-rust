@@ -164,14 +164,16 @@ jobs:
             echo "tag=alpha" >> $GITHUB_OUTPUT
           fi
       
-      - name: Configure npm for publishing
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
-          npm whoami
-      
       - name: Publish to npm
         working-directory: specado-node
         run: |
+          # Configure npm authentication
+          npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
+          
+          # Verify authentication
+          npm whoami
+          
+          # Publish package
           npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
