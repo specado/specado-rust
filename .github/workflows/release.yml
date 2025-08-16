@@ -216,14 +216,22 @@ jobs:
       - name: Setup cross-compilation for Linux ARM64 (zig)
         if: matrix.cross
         run: |
+          # Install Zig for cross-compilation
           curl -L https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz | tar -xJ
           sudo mv zig-linux-x86_64-0.11.0 /opt/zig
           sudo ln -s /opt/zig/zig /usr/local/bin/zig
+          
+          # Install cargo-zigbuild
           cargo install cargo-zigbuild
+          
+          # Set up environment for cross-compilation
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=zig cc -target aarch64-linux-gnu" >> $GITHUB_ENV
           echo "CC_aarch64_unknown_linux_gnu=zig cc -target aarch64-linux-gnu" >> $GITHUB_ENV
           echo "CXX_aarch64_unknown_linux_gnu=zig c++ -target aarch64-linux-gnu" >> $GITHUB_ENV
           echo "AR_aarch64_unknown_linux_gnu=zig ar" >> $GITHUB_ENV
+          
+          # Disable OpenSSL for cross-compilation
+          echo "OPENSSL_NO_VENDOR=1" >> $GITHUB_ENV
 
       - name: Install and build
         working-directory: specado-node
@@ -232,10 +240,8 @@ jobs:
           npm install -g @napi-rs/cli@latest
           if [[ "${{ matrix.cross }}" == "true" ]]; then
             echo "Running cross-compilation build..."
-            # Use cargo-zigbuild for ARM64 cross-compilation
-            cargo zigbuild --release --target ${{ matrix.target }}
-            # Copy the built library to the expected location
-            cp ../target/${{ matrix.target }}/release/libspecado_node.so specado.linux-arm64-gnu.node
+            # napi will use the environment variables we set for cross-compilation
+            napi build --release --target ${{ matrix.target }} --cross-compile
           else
             echo "Running native build..."
             napi build --release --target ${{ matrix.target }}
