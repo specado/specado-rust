@@ -1,5 +1,5 @@
 {
-  "name": "@specado/core",
+  "name": "specado",
   "version": "0.1.0",
   "description": "High-performance Node.js bindings for Specado - Spec-driven LLM integration library with automatic fallback routing and provider transformations",
   "main": "index.js",
@@ -24,7 +24,7 @@
   },
   "napi": {
     "binaryName": "specado",
-    "packageName": "@specado/core",
+    "packageName": "specado",
     "targets": [
       "x86_64-apple-darwin",
       "aarch64-apple-darwin",
@@ -108,13 +108,13 @@
     "LICENSE"
   ],
   "optionalDependencies": {
-    "@specado/core-darwin-x64": "0.1.0",
-    "@specado/core-darwin-arm64": "0.1.0",
-    "@specado/core-linux-x64-gnu": "0.1.0",
-    "@specado/core-linux-x64-musl": "0.1.0",
-    "@specado/core-linux-arm64-gnu": "0.1.0",
-    "@specado/core-linux-arm64-musl": "0.1.0",
-    "@specado/core-win32-x64-msvc": "0.1.0",
-    "@specado/core-win32-arm64-msvc": "0.1.0"
+    "specado-darwin-x64": "0.1.0",
+    "specado-darwin-arm64": "0.1.0",
+    "specado-linux-x64-gnu": "0.1.0",
+    "specado-linux-x64-musl": "0.1.0",
+    "specado-linux-arm64-gnu": "0.1.0",
+    "specado-linux-arm64-musl": "0.1.0",
+    "specado-win32-x64-msvc": "0.1.0",
+    "specado-win32-arm64-msvc": "0.1.0"
   }
 }

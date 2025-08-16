@@ -1,4 +1,4 @@
-# @specado/core
+# specado
 
 **High-performance Node.js bindings for Specado - Spec-driven LLM integration library with automatic fallback routing and provider transformations**
 
@@ -17,11 +17,11 @@ Specado provides a unified interface for working with multiple LLM providers (Op
 ## 📦 Installation
 
 ```bash
-npm install @specado/core
+npm install specado
 # or
-yarn add @specado/core
+yarn add specado
 # or
-pnpm add @specado/core
+pnpm add specado
 ```
 
 ## 🏃 Quick Start
@@ -29,7 +29,7 @@ pnpm add @specado/core
 ### Basic Usage
 
 ```typescript
-import { Client, createMessage } from '@specado/core';
+import { Client, createMessage } from 'specado';
 
 // Create client with default configuration (OpenAI primary, Anthropic fallback)
 const client = new Client();
@@ -50,7 +50,7 @@ console.log(`Provider used: ${response.extensions.providerUsed}`);
 ### Custom Provider Configuration
 
 ```typescript
-import { Client, createMessage } from '@specado/core';
+import { Client, createMessage } from 'specado';
 
 // Configure specific providers and fallback behavior
 const client = new Client({
@@ -74,7 +74,7 @@ console.log(`Provider used: ${response.extensions.providerUsed}`);
 ### Fallback Routing Demo
 
 ```typescript
-import { Client, createMessage } from '@specado/core';
+import { Client, createMessage } from 'specado';
 
 const client = new Client({
   primary_provider: 'openai',
@@ -96,7 +96,7 @@ console.assert(response.extensions.attempts === 2);  // Primary failed, fallback
 ### Transformation and Lossiness Tracking
 
 ```typescript
-import { Client, createMessage } from '@specado/core';
+import { Client, createMessage } from 'specado';
 
 // Use Anthropic as primary (system roles are lossy)
 const client = new Client({ primary_provider: 'anthropic' });
@@ -120,7 +120,7 @@ if (metadata['transformation_lossy'] === 'true') {
 ### Error Handling
 
 ```typescript
-import { Client, createMessage } from '@specado/core';
+import { Client, createMessage } from 'specado';
 
 const client = new Client();
 
@@ -155,7 +155,7 @@ const client = new Client(config);
 ### Message Creation
 
 ```typescript
-import { createMessage } from '@specado/core';
+import { createMessage } from 'specado';
 
 // Supported message roles
 const systemMsg = createMessage('system', 'You are helpful');
@@ -280,7 +280,7 @@ Apache-2.0 - see [LICENSE](https://github.com/specado/specado/blob/main/LICENSE)
 - **Documentation**: https://docs.specado.com
 - **Issues**: https://github.com/specado/specado/issues
 - **Changelog**: https://github.com/specado/specado/blob/main/specado-node/CHANGELOG.md
-- **npm Package**: https://www.npmjs.com/package/@specado/core
+- **npm Package**: https://www.npmjs.com/package/specado
 
 ## 🤝 Contributing
 

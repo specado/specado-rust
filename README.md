@@ -43,7 +43,7 @@ pip install specado  # Coming soon
 
 #### Node.js
 ```bash
-npm install @specado/core  # Coming soon
+npm install specado  # Coming soon
 ```
 
 ### Basic Usage
@@ -63,7 +63,7 @@ print(f"Specado version: {version}")
 
 #### Node.js
 ```javascript
-const specado = require('@specado/core');
+const specado = require('specado');
 
 // Simple hello world test
 const message = specado.helloWorld();

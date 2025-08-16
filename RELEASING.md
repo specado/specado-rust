@@ -149,11 +149,11 @@ pip install -i https://test.pypi.org/simple/ specado==0.1.1a1
 ### Test npm Package
 ```bash
 # For beta/alpha releases
-npm install @specado/core@alpha
-npm install @specado/core@beta
+npm install specado@alpha
+npm install specado@beta
 
 # For specific version
-npm install @specado/core@0.1.1-alpha.1
+npm install specado@0.1.1-alpha.1
 ```
 
 ## Monitoring and Verification
@@ -170,8 +170,8 @@ npm install @specado/core@0.1.1-alpha.1
 - Test: https://test.pypi.org/project/specado/
 
 #### npm
-- Package page: https://www.npmjs.com/package/@specado/core
-- Check versions: `npm view @specado/core versions`
+- Package page: https://www.npmjs.com/package/specado
+- Check versions: `npm view specado versions`
 
 ### GitHub Release
 - Releases page: https://github.com/specado/specado/releases

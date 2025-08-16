@@ -205,9 +205,9 @@ function testFunctionality() {
   try {
     // Create test script
     const testScript = `
-import { Client, createMessage, version } from '@specado/core';
+import { Client, createMessage, version } from 'specado';
 
-console.log('🧪 Testing @specado/core functionality...');
+console.log('🧪 Testing specado functionality...');
 
 // Test version function
 try {

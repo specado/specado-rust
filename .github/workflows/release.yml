@@ -207,9 +207,9 @@ jobs:
             echo "#### Node.js"
             echo '```bash'
             if [[ "${{ needs.validate-version.outputs.release_type }}" != "stable" ]]; then
-              echo "npm install @specado/core@${{ steps.npm-tag.outputs.tag }}"
+              echo "npm install specado@${{ steps.npm-tag.outputs.tag }}"
             else
-              echo "npm install @specado/core@${{ needs.validate-version.outputs.version }}"
+              echo "npm install specado@${{ needs.validate-version.outputs.version }}"
             fi
             echo '```'
             echo ""
