@@ -76,11 +76,15 @@ jobs:
             fi
           fi
 
-  publish-python:
+  # Build Python wheels for multiple platforms
+  build-python-wheels:
     needs: validate-version
     if: |
       !startsWith(github.ref, 'refs/tags/node-v')
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       
@@ -92,15 +96,55 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
-      - name: Install dependencies
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: x86_64
+          args: --release --out dist --manifest-path specado-python/Cargo.toml
+          manylinux: auto
+      
+      - name: Build ARM64 wheels (macOS only)
+        if: matrix.os == 'macos-latest'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: aarch64-apple-darwin
+          args: --release --out dist --manifest-path specado-python/Cargo.toml
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheels-${{ matrix.os }}
+          path: dist/*.whl
+
+  # Publish Python packages
+  publish-python:
+    needs: [validate-version, build-python-wheels]
+    if: |
+      !startsWith(github.ref, 'refs/tags/node-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all Python wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-wheels-*
+          merge-multiple: true
+          path: dist/
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install twine
         run: |
           python -m pip install --upgrade pip
-          pip install maturin twine
+          pip install twine
       
-      - name: Build wheels
-        working-directory: specado-python
+      - name: Check wheels
         run: |
-          maturin build --release --out dist
+          ls -la dist/
           python -m twine check dist/*
       
       - name: Publish to TestPyPI
@@ -108,7 +152,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: specado-python/dist/
+          packages-dir: dist/
           skip-existing: true
           verbose: true
       
@@ -116,18 +160,82 @@ jobs:
         if: needs.validate-version.outputs.is_prerelease == 'false'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: specado-python/dist/
+          packages-dir: dist/
           verbose: true
           print-hash: true
+
+  # Build Node.js binaries for multiple platforms
+  build-node-binaries:
+    needs: validate-version
+    if: |
+      !startsWith(github.ref, 'refs/tags/py-v')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            build: npm run build -- --target x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            build: npm run build -- --target aarch64-apple-darwin
+          
+          # Linux
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: npm run build -- --target x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            setup: |
+              sudo apt-get update
+              sudo apt-get install -y gcc-aarch64-linux-gnu
+            build: npm run build -- --target aarch64-unknown-linux-gnu
+          
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: npm run build -- --target x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
       
-      - name: Upload Python artifacts
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Setup build environment
+        if: matrix.setup
+        run: ${{ matrix.setup }}
+      
+      - name: Install dependencies
+        working-directory: specado-node
+        run: |
+          npm ci
+          npm install -g @napi-rs/cli
+      
+      - name: Build for target
+        working-directory: specado-node
+        run: ${{ matrix.build }}
+      
+      - name: Upload Node binary
         uses: actions/upload-artifact@v4
         with:
-          name: python-dist-${{ needs.validate-version.outputs.version }}
-          path: specado-python/dist/
+          name: node-binary-${{ matrix.target }}
+          path: |
+            specado-node/*.node
+            specado-node/npm/
 
+  # Publish Node.js package with all binaries
   publish-node:
-    needs: validate-version
+    needs: [validate-version, build-node-binaries]
     if: |
       !startsWith(github.ref, 'refs/tags/py-v')
     runs-on: ubuntu-latest
@@ -138,20 +246,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
       
       - name: Install dependencies
         working-directory: specado-node
-        run: |
-          npm ci
-          npm install -g @napi-rs/cli
+        run: npm ci
       
-      - name: Build package
+      - name: Download all Node binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: node-binary-*
+          path: specado-node/artifacts
+      
+      - name: Move binaries to correct locations
         working-directory: specado-node
-        run: npm run build
+        run: |
+          # Move downloaded binaries to their correct locations
+          if [ -d "artifacts" ]; then
+            find artifacts -name "*.node" -exec cp {} . \;
+            if [ -d "artifacts/node-binary-*/npm" ]; then
+              cp -r artifacts/node-binary-*/npm/* npm/ 2>/dev/null || true
+            fi
+          fi
+          
+          # List what we have
+          echo "Node binaries:"
+          ls -la *.node 2>/dev/null || echo "No .node files"
+          echo "NPM platform packages:"
+          ls -la npm/ 2>/dev/null || echo "No npm directory"
       
       - name: Set npm tag
         id: npm-tag
@@ -177,13 +298,8 @@ jobs:
           npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
-      - name: Upload Node artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-dist-${{ needs.validate-version.outputs.version }}
-          path: specado-node/*.tgz
 
+  # Create GitHub release with all artifacts
   create-github-release:
     needs: [validate-version, publish-python, publish-node]
     if: always() && needs.validate-version.result == 'success'
@@ -193,11 +309,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: '*-dist-*'
-          merge-multiple: true
           path: release-artifacts/
       
       - name: Generate release notes
@@ -234,12 +348,24 @@ jobs:
             fi
             echo '```'
             echo ""
+            echo "### Supported Platforms"
+            echo ""
+            echo "#### Python"
+            echo "- Windows (x64)"
+            echo "- macOS (x64, ARM64)"
+            echo "- Linux (x64, manylinux)"
+            echo ""
+            echo "#### Node.js"
+            echo "- Windows (x64)"
+            echo "- macOS (x64, ARM64)"
+            echo "- Linux (x64, ARM64)"
+            echo ""
             echo "### What's Changed"
             echo ""
             echo "See [CHANGELOG.md](https://github.com/specado/specado/blob/main/CHANGELOG.md) for details."
             echo ""
             echo "### Artifacts"
-            echo "Build artifacts are attached to this release."
+            echo "Platform-specific wheels and binaries are attached to this release."
           } > release-notes.md
       
       - name: Create GitHub Release
@@ -249,5 +375,7 @@ jobs:
           name: Specado ${{ needs.validate-version.outputs.version }}
           body_path: release-notes.md
           prerelease: ${{ needs.validate-version.outputs.is_prerelease }}
-          files: release-artifacts/*
+          files: |
+            release-artifacts/**/*.whl
+            release-artifacts/**/*.node
           fail_on_unmatched_files: false
