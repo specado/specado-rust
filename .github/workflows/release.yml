@@ -88,6 +88,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Update Cargo.toml version to match tag
+        run: |
+          # For pre-release versions, update Cargo.toml to include the full version
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          BASE_VERSION=$(echo "$VERSION" | sed 's/-.*$//')
+          
+          # Only update if this is a pre-release (has a hyphen)
+          if [[ "$VERSION" == *"-"* ]]; then
+            # Update the workspace version to include pre-release suffix
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
+              # Windows sed syntax
+              sed -i "s/^version = \"$BASE_VERSION\"/version = \"$VERSION\"/" Cargo.toml
+            else
+              # Unix sed syntax
+              sed -i.bak "s/^version = \"$BASE_VERSION\"/version = \"$VERSION\"/" Cargo.toml
+            fi
+            echo "Updated Cargo.toml version to: $VERSION"
+          fi
+        shell: bash
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -250,6 +270,14 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Update package.json version to match tag
+        working-directory: specado-node
+        run: |
+          # Update package.json to match the exact tag version (including pre-release suffix)
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          echo "Updated package.json version to: $VERSION"
+      
       - name: Install dependencies
         working-directory: specado-node
         run: npm ci
@@ -344,8 +372,10 @@ jobs:
             echo ""
             echo "#### Node.js"
             echo '```bash'
-            if [[ "${{ needs.validate-version.outputs.release_type }}" != "stable" ]]; then
-              echo "npm install specado@${{ steps.npm-tag.outputs.tag }}"
+            if [[ "${{ needs.validate-version.outputs.release_type }}" == "alpha" ]]; then
+              echo "npm install specado@alpha"
+            elif [[ "${{ needs.validate-version.outputs.release_type }}" == "prerelease" ]]; then
+              echo "npm install specado@beta"
             else
               echo "npm install specado@${{ needs.validate-version.outputs.version }}"
             fi
