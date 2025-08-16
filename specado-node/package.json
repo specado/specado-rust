@@ -1,6 +1,6 @@
 {
   "name": "specado",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "High-performance Node.js bindings for Specado - Spec-driven LLM integration library with automatic fallback routing and provider transformations",
   "main": "index.js",
   "types": "index.d.ts",
@@ -108,13 +108,13 @@
     "LICENSE"
   ],
   "optionalDependencies": {
-    "specado-darwin-x64": "0.1.0",
-    "specado-darwin-arm64": "0.1.0",
-    "specado-linux-x64-gnu": "0.1.0",
-    "specado-linux-x64-musl": "0.1.0",
-    "specado-linux-arm64-gnu": "0.1.0",
-    "specado-linux-arm64-musl": "0.1.0",
-    "specado-win32-x64-msvc": "0.1.0",
-    "specado-win32-arm64-msvc": "0.1.0"
+    "specado-darwin-x64": "0.1.1",
+    "specado-darwin-arm64": "0.1.1",
+    "specado-linux-x64-gnu": "0.1.1",
+    "specado-linux-x64-musl": "0.1.1",
+    "specado-linux-arm64-gnu": "0.1.1",
+    "specado-linux-arm64-musl": "0.1.1",
+    "specado-win32-x64-msvc": "0.1.1",
+    "specado-win32-arm64-msvc": "0.1.1"
   }
 }
