@@ -91,10 +91,19 @@ jobs:
           if [[ "$VERSION" == *"-"* ]]; then
             # For pre-release versions, manually update Cargo.toml to avoid cargo-edit downgrade issues
             BASE_VERSION=$(echo "$VERSION" | sed 's/-.*$//')
-            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-core/Cargo.toml
-            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-python/Cargo.toml
-            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-node/Cargo.toml
+            # Use sed with backup for macOS compatibility
+            if [[ "$RUNNER_OS" == "macOS" ]]; then
+              sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+              sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" specado-core/Cargo.toml
+              sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" specado-python/Cargo.toml
+              sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" specado-node/Cargo.toml
+              rm -f *.bak */*.bak
+            else
+              sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+              sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-core/Cargo.toml
+              sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-python/Cargo.toml
+              sed -i "s/^version = \".*\"/version = \"$VERSION\"/" specado-node/Cargo.toml
+            fi
             echo "Updated Cargo.toml version to: $VERSION"
           fi
         shell: bash
