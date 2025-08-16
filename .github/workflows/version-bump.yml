@@ -1,0 +1,121 @@
+name: Version Bump Helper
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version (e.g., 0.2.0, 1.0.0-rc.1)'
+        required: true
+        type: string
+      create_tag:
+        description: 'Create and push tag after version bump'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Validate version format
+        run: |
+          VERSION="${{ inputs.version }}"
+          # Check if version follows semantic versioning
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "::error::Invalid version format. Must follow semantic versioning (e.g., 1.0.0, 1.0.0-rc.1)"
+            exit 1
+          fi
+      
+      - name: Update Rust crate versions
+        run: |
+          VERSION="${{ inputs.version }}"
+          
+          # Update version in workspace Cargo.toml (single source of truth)
+          sed -i "/^\[workspace.package\]/,/^\[/ s/^version = \".*\"/version = \"${VERSION}\"/" Cargo.toml
+      
+      - name: Update Node.js package version
+        if: hashFiles('specado-node/package.json') != ''
+        working-directory: specado-node
+        run: |
+          VERSION="${{ inputs.version }}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+      
+      - name: Update Python package version (if using static version)
+        if: hashFiles('specado-python/pyproject.toml') != ''
+        run: |
+          # Only update if pyproject.toml has a static version field
+          # (maturin typically uses dynamic versioning from Cargo.toml)
+          if grep -q '^version =' specado-python/pyproject.toml 2>/dev/null; then
+            VERSION="${{ inputs.version }}"
+            sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" specado-python/pyproject.toml
+          fi
+      
+      - name: Create version bump commit
+        run: |
+          VERSION="${{ inputs.version }}"
+          git add -A
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No version changes detected. Version might already be ${VERSION}."
+            exit 0
+          fi
+          
+          git commit -m "chore: bump version to ${VERSION}
+
+          - Updated Cargo.toml versions
+          - Updated package.json version
+          - Preparing for release ${VERSION}"
+      
+      - name: Push version bump
+        run: |
+          git push origin main
+      
+      - name: Create and push tag
+        if: inputs.create_tag
+        run: |
+          VERSION="${{ inputs.version }}"
+          TAG_NAME="v${VERSION}"
+          
+          # Create annotated tag
+          git tag -a "$TAG_NAME" -m "Release version ${VERSION}
+          
+          Created by GitHub Actions version bump workflow
+          Triggered by: ${{ github.actor }}"
+          
+          # Push the tag
+          git push origin "$TAG_NAME"
+          
+          echo "::notice::Tag $TAG_NAME created and pushed. This will trigger the release workflow."
+      
+      - name: Summary
+        run: |
+          VERSION="${{ inputs.version }}"
+          echo "## Version Bump Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Version bumped to:** ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Updated files:" >> $GITHUB_STEP_SUMMARY
+          echo "- Cargo.toml files" >> $GITHUB_STEP_SUMMARY
+          if [ -f "specado-node/package.json" ]; then
+            echo "- specado-node/package.json" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ inputs.create_tag }}" == "true" ]]; then
+            echo "### Tag created:" >> $GITHUB_STEP_SUMMARY
+            echo "- \`v${VERSION}\` - This will trigger the release workflow" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Next steps:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Review the changes" >> $GITHUB_STEP_SUMMARY
+            echo "2. Create a tag manually: \`git tag v${VERSION} && git push origin v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          fi

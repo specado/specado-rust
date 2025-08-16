@@ -1,0 +1,232 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'py-v*'
+      - 'node-v*'
+
+permissions:
+  contents: write
+  id-token: write  # Required for OIDC/Trusted Publisher
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      is_prerelease: ${{ steps.check.outputs.is_prerelease }}
+      release_type: ${{ steps.check.outputs.release_type }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Extract version from tag
+        id: extract
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          VERSION=${VERSION#py-v}
+          VERSION=${VERSION#node-v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+      
+      - name: Determine release type
+        id: check
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "release_type=stable" >> $GITHUB_OUTPUT
+          elif [[ "$TAG" =~ -(rc|beta)\.[0-9]+$ ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "release_type=prerelease" >> $GITHUB_OUTPUT
+          elif [[ "$TAG" =~ -(alpha|dev)\.[0-9]+$ ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "release_type=alpha" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "release_type=stable" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Validate version consistency
+        run: |
+          # Check workspace Cargo.toml version (single source of truth)
+          CARGO_VERSION=$(grep '^version' Cargo.toml | grep -A1 '\[workspace.package\]' | tail -1 | cut -d'"' -f2)
+          if [[ "$CARGO_VERSION" != "${{ steps.extract.outputs.version }}" ]]; then
+            echo "::error::Version mismatch: Tag version (${{ steps.extract.outputs.version }}) != Cargo.toml ($CARGO_VERSION)"
+            exit 1
+          fi
+
+  publish-python:
+    needs: validate-version
+    if: |
+      !startsWith(github.ref, 'refs/tags/node-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install maturin twine
+      
+      - name: Build wheels
+        working-directory: specado-python
+        run: |
+          maturin build --release --out dist
+          python -m twine check dist/*
+      
+      - name: Publish to TestPyPI
+        if: needs.validate-version.outputs.is_prerelease == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: specado-python/dist/
+          skip-existing: true
+          verbose: true
+      
+      - name: Publish to PyPI
+        if: needs.validate-version.outputs.is_prerelease == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: specado-python/dist/
+          verbose: true
+          print-hash: true
+      
+      - name: Upload Python artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist-${{ needs.validate-version.outputs.version }}
+          path: specado-python/dist/
+
+  publish-node:
+    needs: validate-version
+    if: |
+      !startsWith(github.ref, 'refs/tags/py-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        working-directory: specado-node
+        run: |
+          npm ci
+          npm install -g @napi-rs/cli
+      
+      - name: Build package
+        working-directory: specado-node
+        run: npm run build
+      
+      - name: Set npm tag
+        id: npm-tag
+        run: |
+          if [[ "${{ needs.validate-version.outputs.release_type }}" == "stable" ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.validate-version.outputs.release_type }}" == "prerelease" ]]; then
+            echo "tag=beta" >> $GITHUB_OUTPUT
+          else
+            echo "tag=alpha" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Configure npm for publishing
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          npm whoami
+      
+      - name: Publish to npm
+        working-directory: specado-node
+        run: |
+          npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Upload Node artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-dist-${{ needs.validate-version.outputs.version }}
+          path: specado-node/*.tgz
+
+  create-github-release:
+    needs: [validate-version, publish-python, publish-node]
+    if: always() && needs.validate-version.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-dist-*'
+          merge-multiple: true
+          path: release-artifacts/
+      
+      - name: Generate release notes
+        id: notes
+        run: |
+          {
+            echo "## 📦 Specado ${{ needs.validate-version.outputs.version }}"
+            echo ""
+            if [[ "${{ needs.validate-version.outputs.is_prerelease }}" == "true" ]]; then
+              echo "🚧 **Pre-release version** - Not recommended for production use"
+            else
+              echo "✅ **Stable release** - Ready for production use"
+            fi
+            echo ""
+            echo "### Installation"
+            echo ""
+            echo "#### Python"
+            if [[ "${{ needs.validate-version.outputs.is_prerelease }}" == "true" ]]; then
+              echo '```bash'
+              echo "pip install -i https://test.pypi.org/simple/ specado==${{ needs.validate-version.outputs.version }}"
+              echo '```'
+            else
+              echo '```bash'
+              echo "pip install specado==${{ needs.validate-version.outputs.version }}"
+              echo '```'
+            fi
+            echo ""
+            echo "#### Node.js"
+            echo '```bash'
+            if [[ "${{ needs.validate-version.outputs.release_type }}" != "stable" ]]; then
+              echo "npm install @specado/core@${{ steps.npm-tag.outputs.tag }}"
+            else
+              echo "npm install @specado/core@${{ needs.validate-version.outputs.version }}"
+            fi
+            echo '```'
+            echo ""
+            echo "### What's Changed"
+            echo ""
+            echo "See [CHANGELOG.md](https://github.com/specado/specado/blob/main/CHANGELOG.md) for details."
+            echo ""
+            echo "### Artifacts"
+            echo "Build artifacts are attached to this release."
+          } > release-notes.md
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          name: Specado ${{ needs.validate-version.outputs.version }}
+          body_path: release-notes.md
+          prerelease: ${{ needs.validate-version.outputs.is_prerelease }}
+          files: release-artifacts/*
+          fail_on_unmatched_files: false
