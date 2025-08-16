@@ -51,10 +51,29 @@ jobs:
       - name: Validate version consistency
         run: |
           # Check workspace Cargo.toml version (single source of truth)
-          CARGO_VERSION=$(grep '^version' Cargo.toml | grep -A1 '\[workspace.package\]' | tail -1 | cut -d'"' -f2)
-          if [[ "$CARGO_VERSION" != "${{ steps.extract.outputs.version }}" ]]; then
-            echo "::error::Version mismatch: Tag version (${{ steps.extract.outputs.version }}) != Cargo.toml ($CARGO_VERSION)"
-            exit 1
+          # Extract version from [workspace.package] section
+          CARGO_VERSION=$(awk '/^\[workspace\.package\]/{f=1} f && /^version/{print $3; exit}' Cargo.toml | tr -d '"')
+          
+          # Extract base version from tag (remove pre-release suffix for comparison)
+          TAG_VERSION="${{ steps.extract.outputs.version }}"
+          BASE_TAG_VERSION=$(echo "$TAG_VERSION" | sed 's/-.*$//')
+          
+          echo "Tag version: $TAG_VERSION"
+          echo "Base tag version: $BASE_TAG_VERSION"
+          echo "Cargo.toml version: $CARGO_VERSION"
+          
+          # For pre-release versions, compare base versions
+          if [[ "$TAG_VERSION" == *"-"* ]]; then
+            if [[ "$CARGO_VERSION" != "$BASE_TAG_VERSION" ]]; then
+              echo "::error::Version mismatch: Tag base version ($BASE_TAG_VERSION) != Cargo.toml ($CARGO_VERSION)"
+              exit 1
+            fi
+          else
+            # For stable releases, versions must match exactly
+            if [[ "$CARGO_VERSION" != "$TAG_VERSION" ]]; then
+              echo "::error::Version mismatch: Tag version ($TAG_VERSION) != Cargo.toml ($CARGO_VERSION)"
+              exit 1
+            fi
           fi
 
   publish-python:
