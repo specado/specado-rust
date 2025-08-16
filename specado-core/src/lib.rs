@@ -2,6 +2,7 @@
 //!
 //! This crate provides the core functionality for spec-driven LLM integration.
 
+pub mod capabilities;
 pub mod config;
 pub mod protocol;
 pub mod providers;
