@@ -69,7 +69,7 @@ impl HttpClient {
     
     /// Build the full URL for a provider and call kind
     fn build_url(&self, provider: &dyn Provider, call_kind: CallKind) -> String {
-        format!("{}{}", provider.base_url(), call_kind.endpoint())
+        format!("{}{}", provider.base_url(), provider.endpoint(call_kind))
     }
     
     /// Get API key from environment (temporary for MVP)
@@ -203,6 +203,9 @@ impl HttpExecutor for HttpClient {
         
         // Check for non-success status codes
         if !status.is_success() {
+            // Capture headers for retry-after parsing
+            let headers = response.headers().clone();
+            
             // Try to get response body for error details
             let body = response
                 .text()
@@ -214,7 +217,7 @@ impl HttpExecutor for HttpClient {
                 status, provider.name(), request_id
             );
             
-            return Err(crate::http::error::map_http_error(status, body, request_id));
+            return Err(crate::http::error::map_http_error(status, Some(&headers), body, request_id));
         }
         
         // Validate content type

@@ -3,6 +3,7 @@
 //! Defines the core abstraction for LLM providers and their capabilities.
 //! For MVP, capabilities are hardcoded. Future versions will load from manifests.
 
+use crate::http::CallKind;
 use crate::protocol::types::{ChatRequest, ChatResponse};
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,9 @@ pub trait Provider: Send + Sync {
     
     /// Get the base URL for this provider
     fn base_url(&self) -> &str;
+    
+    /// Get the endpoint path for a specific call kind
+    fn endpoint(&self, call_kind: CallKind) -> &str;
     
     /// Get headers required for this provider
     fn headers(&self, api_key: &str) -> HashMap<String, String>;

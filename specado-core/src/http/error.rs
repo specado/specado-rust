@@ -6,9 +6,10 @@ use serde_json::Value;
 use std::time::Duration;
 use uuid::Uuid;
 
-/// Map HTTP status code and response body to a ProviderError
+/// Map HTTP status code, headers, and response body to a ProviderError
 pub fn map_http_error(
     status: StatusCode,
+    headers: Option<&reqwest::header::HeaderMap>,
     body: Option<String>,
     request_id: Uuid,
 ) -> ProviderError {
@@ -31,10 +32,16 @@ pub fn map_http_error(
         StatusCode::UNAUTHORIZED => ProviderError::AuthenticationError,
         
         StatusCode::TOO_MANY_REQUESTS => {
-            // Try to parse Retry-After header value
-            let retry_after = error_details
-                .and_then(|d| d.retry_after_seconds)
-                .map(Duration::from_secs);
+            // Try to parse Retry-After from header first, then fall back to JSON body
+            let retry_after = headers
+                .and_then(|h| h.get("retry-after"))
+                .and_then(|v| v.to_str().ok())
+                .and_then(parse_retry_after)
+                .or_else(|| {
+                    error_details
+                        .and_then(|d| d.retry_after_seconds)
+                        .map(Duration::from_secs)
+                });
             
             ProviderError::RateLimit { retry_after }
         }

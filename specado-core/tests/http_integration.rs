@@ -109,16 +109,17 @@ fn test_error_mapping() {
     let request_id = Uuid::new_v4();
     
     // Test 401 Unauthorized
-    let error = map_http_error(StatusCode::UNAUTHORIZED, None, request_id);
+    let error = map_http_error(StatusCode::UNAUTHORIZED, None, None, request_id);
     assert!(matches!(error, ProviderError::AuthenticationError));
     
     // Test 429 Too Many Requests
-    let error = map_http_error(StatusCode::TOO_MANY_REQUESTS, None, request_id);
+    let error = map_http_error(StatusCode::TOO_MANY_REQUESTS, None, None, request_id);
     assert!(matches!(error, ProviderError::RateLimit { .. }));
     
     // Test 500 Internal Server Error
     let error = map_http_error(
         StatusCode::INTERNAL_SERVER_ERROR,
+        None,
         Some("Server error".to_string()),
         request_id
     );
@@ -127,6 +128,7 @@ fn test_error_mapping() {
     // Test 400 Bad Request
     let error = map_http_error(
         StatusCode::BAD_REQUEST,
+        None,
         Some("Invalid request".to_string()),
         request_id
     );

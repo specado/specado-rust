@@ -65,10 +65,12 @@ coverage/
 *.dylib
 *.dll
 *.exe
+test_capabilities_ffi
 
 # Documentation
 docs/_build/
 docs/.doctrees/
+llmcontext/
 
 # Temporary files
 *.tmp

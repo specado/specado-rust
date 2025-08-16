@@ -3,6 +3,7 @@
 //! Implements the Provider trait for OpenAI's API.
 //! For MVP, capabilities are hardcoded based on GPT-4 and GPT-3.5-turbo.
 
+use crate::http::CallKind;
 use crate::protocol::types::{ChatRequest, ChatResponse};
 use crate::providers::adapter::{Provider, ProviderCapabilities};
 use std::collections::HashMap;
@@ -75,6 +76,12 @@ impl Provider for OpenAIProvider {
     
     fn base_url(&self) -> &str {
         "https://api.openai.com/v1"
+    }
+    
+    fn endpoint(&self, call_kind: CallKind) -> &str {
+        match call_kind {
+            CallKind::Chat => "/chat/completions",
+        }
     }
     
     fn headers(&self, api_key: &str) -> HashMap<String, String> {

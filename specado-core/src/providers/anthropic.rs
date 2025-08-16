@@ -3,6 +3,7 @@
 //! Implements the Provider trait for Anthropic's Claude API.
 //! Handles the differences in message format and capabilities.
 
+use crate::http::CallKind;
 use crate::protocol::types::{ChatRequest, ChatResponse, Message, MessageRole};
 use crate::providers::adapter::{Provider, ProviderCapabilities};
 use std::collections::HashMap;
@@ -99,6 +100,12 @@ impl Provider for AnthropicProvider {
     
     fn base_url(&self) -> &str {
         "https://api.anthropic.com/v1"
+    }
+    
+    fn endpoint(&self, call_kind: CallKind) -> &str {
+        match call_kind {
+            CallKind::Chat => "/messages",  // Anthropic uses /messages, not /chat/completions
+        }
     }
     
     fn headers(&self, api_key: &str) -> HashMap<String, String> {
