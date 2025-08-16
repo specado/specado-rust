@@ -92,7 +92,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.1.4",
+    "@napi-rs/cli": "^3.1.5",
     "@types/node": "^24.3.0",
     "eslint": "^9.15.0",
     "prettier": "^3.0.0",

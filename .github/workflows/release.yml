@@ -3,13 +3,13 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
-      - 'py-v*'
-      - 'node-v*'
+      - "v*"
+      - "py-v*"
+      - "node-v*"
 
 permissions:
   contents: write
-  id-token: write  # Required for OIDC/Trusted Publisher
+  id-token: write
 
 jobs:
   validate-version:
@@ -20,7 +20,7 @@ jobs:
       release_type: ${{ steps.check.outputs.release_type }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Extract version from tag
         id: extract
         run: |
@@ -29,460 +29,268 @@ jobs:
           VERSION=${VERSION#py-v}
           VERSION=${VERSION#node-v}
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-      
+
       - name: Determine release type
         id: check
+        env:
+          VERSION: ${{ steps.extract.outputs.version }}
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "release_type=stable" >> $GITHUB_OUTPUT
-          elif [[ "$TAG" =~ -(rc|beta)\.[0-9]+$ ]]; then
+          elif [[ "$VERSION" =~ -(rc|beta)\.[0-9]+$ ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "release_type=prerelease" >> $GITHUB_OUTPUT
-          elif [[ "$TAG" =~ -(alpha|dev)\.[0-9]+$ ]]; then
+          elif [[ "$VERSION" =~ -(alpha|dev)\.[0-9]+$ ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "release_type=alpha" >> $GITHUB_OUTPUT
           else
+            echo "::warning::Could not determine release type for '$VERSION'. Defaulting to stable."
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "release_type=stable" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Validate version consistency
         run: |
-          # Check workspace Cargo.toml version (single source of truth)
-          # Extract version from [workspace.package] section
           CARGO_VERSION=$(awk '/^\[workspace\.package\]/{f=1} f && /^version/{print $3; exit}' Cargo.toml | tr -d '"')
-          
-          # Extract base version from tag (remove pre-release suffix for comparison)
           TAG_VERSION="${{ steps.extract.outputs.version }}"
           BASE_TAG_VERSION=$(echo "$TAG_VERSION" | sed 's/-.*$//')
-          
+
           echo "Tag version: $TAG_VERSION"
           echo "Base tag version: $BASE_TAG_VERSION"
           echo "Cargo.toml version: $CARGO_VERSION"
-          
-          # For pre-release versions, compare base versions
+
           if [[ "$TAG_VERSION" == *"-"* ]]; then
-            if [[ "$CARGO_VERSION" != "$BASE_TAG_VERSION" ]]; then
-              echo "::error::Version mismatch: Tag base version ($BASE_TAG_VERSION) != Cargo.toml ($CARGO_VERSION)"
-              exit 1
-            fi
+            [[ "$CARGO_VERSION" == "$BASE_TAG_VERSION" ]] || { echo "::error::Version mismatch: $BASE_TAG_VERSION != $CARGO_VERSION"; exit 1; }
           else
-            # For stable releases, versions must match exactly
-            if [[ "$CARGO_VERSION" != "$TAG_VERSION" ]]; then
-              echo "::error::Version mismatch: Tag version ($TAG_VERSION) != Cargo.toml ($CARGO_VERSION)"
-              exit 1
-            fi
+            [[ "$CARGO_VERSION" == "$TAG_VERSION" ]] || { echo "::error::Version mismatch: $TAG_VERSION != $CARGO_VERSION"; exit 1; }
           fi
 
-  # Build Python wheels for multiple platforms
   build-python-wheels:
     needs: validate-version
-    if: |
-      !startsWith(github.ref, 'refs/tags/node-v')
+    if: ${{ !startsWith(github.ref, 'refs/tags/node-v') }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install OS dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+
+      - name: Setup per-OS OpenSSL env
+        uses: ./.github/actions/setup-rust-env
+        with:
+          os: ${{ matrix.os }}
+
+      - name: Update Cargo.toml (pre-release only)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev
-      
-      - name: Install OS dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install openssl@3 pkg-config
-          OSSL=$(brew --prefix openssl@3)
-          echo "PKG_CONFIG_PATH=$OSSL/lib/pkgconfig" >> $GITHUB_ENV
-          echo "CPPFLAGS=-I$OSSL/include" >> $GITHUB_ENV
-          echo "LDFLAGS=-L$OSSL/lib" >> $GITHUB_ENV
-      
-      - name: Install OS dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install -y openssl
-          echo "OPENSSL_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=C:\Program Files\OpenSSL-Win64\lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_NO_PKG_CONFIG=1" >> $env:GITHUB_ENV
-        shell: powershell
-      
-      - name: Update Cargo.toml version to match tag
-        run: |
-          # For pre-release versions, update Cargo.toml to include the full version
           VERSION="${{ needs.validate-version.outputs.version }}"
-          BASE_VERSION=$(echo "$VERSION" | sed 's/-.*$//')
-          
-          # Only update if this is a pre-release (has a hyphen)
           if [[ "$VERSION" == *"-"* ]]; then
-            # Update the workspace version to include pre-release suffix
-            if [[ "$RUNNER_OS" == "Windows" ]]; then
-              # Windows sed syntax
-              sed -i "s/^version = \"$BASE_VERSION\"/version = \"$VERSION\"/" Cargo.toml
-            else
-              # Unix sed syntax
-              sed -i.bak "s/^version = \"$BASE_VERSION\"/version = \"$VERSION\"/" Cargo.toml
-            fi
-            echo "Updated Cargo.toml version to: $VERSION"
+            cargo install cargo-edit
+            cargo set-version -p specado-python --workspace "$VERSION"
+            echo "Updated workspace version to: $VERSION"
           fi
         shell: bash
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      
+          python-version: "3.11"
+
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: x86_64
           args: --release --out dist --manifest-path specado-python/Cargo.toml
           manylinux: auto
-          before-script-linux: |
-            if command -v yum &>/dev/null; then
-              yum install -y openssl-devel pkgconfig
-            elif command -v apt-get &>/dev/null; then
-              apt-get update && apt-get install -y libssl-dev pkg-config
-            fi
-      
-      - name: Build ARM64 wheels (macOS only)
+          before-script-linux: "yum install -y openssl-devel pkgconfig || apt-get update && apt-get install -y libssl-dev pkg-config"
+
+      - name: Build ARM64 wheels (macOS)
         if: matrix.os == 'macos-latest'
         uses: PyO3/maturin-action@v1
         with:
           target: aarch64-apple-darwin
           args: --release --out dist --manifest-path specado-python/Cargo.toml
-      
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+
+      - uses: actions/upload-artifact@v4
         with:
           name: python-wheels-${{ matrix.os }}
           path: dist/*.whl
 
-  # Publish Python packages
   publish-python:
     needs: [validate-version, build-python-wheels]
-    if: |
-      !startsWith(github.ref, 'refs/tags/node-v')
+    if: ${{ !startsWith(github.ref, 'refs/tags/node-v') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download all Python wheels
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: python-wheels-*
           merge-multiple: true
           path: dist/
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      
-      - name: Install twine
+          python-version: "3.11"
+      - name: Twine check
         run: |
-          python -m pip install --upgrade pip
-          pip install twine
-      
-      - name: Check wheels
-        run: |
-          ls -la dist/
+          python -m pip install --upgrade pip twine
           python -m twine check dist/*
-      
       - name: Publish to TestPyPI
         if: needs.validate-version.outputs.is_prerelease == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist/
-          skip-existing: true
-          verbose: true
-      
       - name: Publish to PyPI
         if: needs.validate-version.outputs.is_prerelease == 'false'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
-          verbose: true
-          print-hash: true
 
-  # Build Node.js binaries for multiple platforms
   build-node-binaries:
     needs: validate-version
-    if: |
-      !startsWith(github.ref, 'refs/tags/py-v')
+    if: ${{ !startsWith(github.ref, 'refs/tags/py-v') }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macOS
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            build: npm run build -- --target x86_64-apple-darwin
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            build: npm run build -- --target aarch64-apple-darwin
-          
-          # Linux
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            build: npm run build -- --target x86_64-unknown-linux-gnu
-          # Linux ARM64 - use cross-compilation
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            setup: |
-              # Install zig for cross-compilation (keep full directory structure)
-              curl -L https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz | tar -xJ
-              sudo mv zig-linux-x86_64-0.11.0 /opt/zig
-              sudo ln -s /opt/zig/zig /usr/local/bin/zig
-              zig version
-              # Install cargo-zigbuild
-              cargo install cargo-zigbuild
-              # For ARM64 cross-compilation, we use zig's built-in cross-compilation support
-              # which handles OpenSSL linking automatically
-              echo "CC=zig cc -target aarch64-linux-gnu" >> $GITHUB_ENV
-              echo "CXX=zig c++ -target aarch64-linux-gnu" >> $GITHUB_ENV
-              echo "AR=zig ar" >> $GITHUB_ENV
-              echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=zig cc -target aarch64-linux-gnu" >> $GITHUB_ENV
-            build: npm run build -- --target aarch64-unknown-linux-gnu --cross-compile
-          
-          # Windows
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            build: npm run build -- --target x86_64-pc-windows-msvc
-
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: macos-latest, target: aarch64-apple-darwin }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+          - {
+              os: ubuntu-latest,
+              target: aarch64-unknown-linux-gnu,
+              cross: true,
+            }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+
+      - name: Setup per-OS OpenSSL env
+        uses: ./.github/actions/setup-rust-env
         with:
-          node-version: '20'
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+          os: ${{ matrix.os }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-        if: matrix.target != 'aarch64-unknown-linux-gnu'
-      
-      - name: Install Rust (for cross-compilation)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-      
-      - name: Install OS dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest' && matrix.target != 'aarch64-unknown-linux-gnu'
+
+      - name: Setup cross-compilation for Linux ARM64 (zig)
+        if: matrix.cross
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev
-      
-      - name: Install OS dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install openssl@3 pkg-config
-          OSSL=$(brew --prefix openssl@3)
-          echo "PKG_CONFIG_PATH=$OSSL/lib/pkgconfig" >> $GITHUB_ENV
-          echo "CPPFLAGS=-I$OSSL/include" >> $GITHUB_ENV
-          echo "LDFLAGS=-L$OSSL/lib" >> $GITHUB_ENV
-      
-      - name: Install OS dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install -y openssl
-          echo "OPENSSL_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=C:\Program Files\OpenSSL-Win64\lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_NO_PKG_CONFIG=1" >> $env:GITHUB_ENV
-        shell: powershell
-      
-      - name: Setup build environment
-        if: matrix.setup
-        run: ${{ matrix.setup }}
-      
-      - name: Install dependencies
+          curl -L https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz | tar -xJ
+          sudo mv zig-linux-x86_64-0.11.0 /opt/zig
+          sudo ln -s /opt/zig/zig /usr/local/bin/zig
+          cargo install cargo-zigbuild
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=zig cc -target aarch64-linux-gnu" >> $GITHUB_ENV
+          echo "CC_aarch64_unknown_linux_gnu=zig cc -target aarch64-linux-gnu" >> $GITHUB_ENV
+          echo "CXX_aarch64_unknown_linux_gnu=zig c++ -target aarch64-linux-gnu" >> $GITHUB_ENV
+          echo "AR_aarch64_unknown_linux_gnu=zig ar" >> $GITHUB_ENV
+
+      - name: Install and build
         working-directory: specado-node
         run: |
           npm ci
-          npm install -g @napi-rs/cli
-      
-      - name: Build for target
-        working-directory: specado-node
-        run: ${{ matrix.build }}
-      
-      - name: Upload Node binary
-        uses: actions/upload-artifact@v4
+          npm install -g @napi-rs/cli@latest
+          if [[ "${{ matrix.cross }}" == "true" ]]; then
+            # For ARM64 cross-compilation, use napi with --zig flag
+            napi build --release --target ${{ matrix.target }} --zig
+          else
+            napi build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
         with:
           name: node-binary-${{ matrix.target }}
-          path: |
-            specado-node/*.node
-            specado-node/npm/
+          path: specado-node/*.node
 
-  # Publish Node.js package with all binaries
   publish-node:
     needs: [validate-version, build-node-binaries]
-    if: |
-      !startsWith(github.ref, 'refs/tags/py-v')
+    if: ${{ !startsWith(github.ref, 'refs/tags/py-v') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      
-      - name: Update package.json version to match tag
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Update package.json version
         working-directory: specado-node
-        run: |
-          # Update package.json to match the exact tag version (including pre-release suffix)
-          VERSION="${{ needs.validate-version.outputs.version }}"
-          # Directly update package.json without running npm version script
-          npm pkg set version="$VERSION"
-          echo "Updated package.json version to: $VERSION"
-      
+        run: npm version --no-git-tag-version ${{ needs.validate-version.outputs.version }}
       - name: Install dependencies
         working-directory: specado-node
         run: npm ci
-      
-      - name: Download all Node binaries
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: node-binary-*
-          path: specado-node/artifacts
-      
-      - name: Move binaries to correct locations
-        working-directory: specado-node
-        run: |
-          # Move downloaded binaries to their correct locations
-          if [ -d "artifacts" ]; then
-            find artifacts -name "*.node" -exec cp {} . \;
-            if [ -d "artifacts/node-binary-*/npm" ]; then
-              cp -r artifacts/node-binary-*/npm/* npm/ 2>/dev/null || true
-            fi
-          fi
-          
-          # List what we have
-          echo "Node binaries:"
-          ls -la *.node 2>/dev/null || echo "No .node files"
-          echo "NPM platform packages:"
-          ls -la npm/ 2>/dev/null || echo "No npm directory"
-      
+          path: specado-node/
       - name: Set npm tag
         id: npm-tag
         run: |
-          if [[ "${{ needs.validate-version.outputs.release_type }}" == "stable" ]]; then
-            echo "tag=latest" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.validate-version.outputs.release_type }}" == "prerelease" ]]; then
-            echo "tag=beta" >> $GITHUB_OUTPUT
-          else
-            echo "tag=alpha" >> $GITHUB_OUTPUT
-          fi
-      
+          case "${{ needs.validate-version.outputs.release_type }}" in
+            stable)     echo "tag=latest" >> $GITHUB_OUTPUT ;;
+            prerelease) echo "tag=beta"   >> $GITHUB_OUTPUT ;;
+            *)          echo "tag=alpha"  >> $GITHUB_OUTPUT ;;
+          esac
       - name: Publish to npm
         working-directory: specado-node
-        run: |
-          # Configure npm authentication
-          npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
-          
-          # Verify authentication
-          npm whoami
-          
-          # Publish package
-          npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+        run: npm publish --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # Create GitHub release with all artifacts
   create-github-release:
     needs: [validate-version, publish-python, publish-node]
     if: always() && needs.validate-version.result == 'success'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: release-artifacts/
-      
-      - name: Generate release notes
-        id: notes
+      - name: Generate Release Notes
+        id: generate-notes
         run: |
-          {
-            echo "## 📦 Specado ${{ needs.validate-version.outputs.version }}"
-            echo ""
-            if [[ "${{ needs.validate-version.outputs.is_prerelease }}" == "true" ]]; then
-              echo "🚧 **Pre-release version** - Not recommended for production use"
-            else
-              echo "✅ **Stable release** - Ready for production use"
-            fi
-            echo ""
-            echo "### Installation"
-            echo ""
-            echo "#### Python"
-            if [[ "${{ needs.validate-version.outputs.is_prerelease }}" == "true" ]]; then
-              echo '```bash'
-              echo "pip install -i https://test.pypi.org/simple/ specado==${{ needs.validate-version.outputs.version }}"
-              echo '```'
-            else
-              echo '```bash'
-              echo "pip install specado==${{ needs.validate-version.outputs.version }}"
-              echo '```'
-            fi
-            echo ""
-            echo "#### Node.js"
-            echo '```bash'
-            if [[ "${{ needs.validate-version.outputs.release_type }}" == "alpha" ]]; then
-              echo "npm install specado@alpha"
-            elif [[ "${{ needs.validate-version.outputs.release_type }}" == "prerelease" ]]; then
-              echo "npm install specado@beta"
-            else
-              echo "npm install specado@${{ needs.validate-version.outputs.version }}"
-            fi
-            echo '```'
-            echo ""
-            echo "### Supported Platforms"
-            echo ""
-            echo "#### Python"
-            echo "- Windows (x64)"
-            echo "- macOS (x64, ARM64)"
-            echo "- Linux (x64, manylinux)"
-            echo ""
-            echo "#### Node.js"
-            echo "- Windows (x64)"
-            echo "- macOS (x64, ARM64)"
-            echo "- Linux (x64, ARM64)"
-            echo ""
-            echo "### What's Changed"
-            echo ""
-            echo "See [CHANGELOG.md](https://github.com/specado/specado/blob/main/CHANGELOG.md) for details."
-            echo ""
-            echo "### Artifacts"
-            echo "Platform-specific wheels and binaries are attached to this release."
-          } > release-notes.md
-      
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          RELEASE_TYPE="${{ needs.validate-version.outputs.release_type }}"
+          IS_PRERELEASE="${{ needs.validate-version.outputs.is_prerelease }}"
+
+          RELEASE_BADGE="✅ **Stable release** - Ready for production use"
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            RELEASE_BADGE="🚧 **Pre-release version** - Not recommended for production use"
+          fi
+
+          PY_INSTALL="pip install specado==$VERSION"
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            PY_INSTALL="pip install -i https://test.pypi.org/simple/ specado==$VERSION"
+          fi
+
+          NODE_INSTALL="npm install specado@$VERSION"
+          if [[ "$RELEASE_TYPE" == "alpha" ]]; then
+            NODE_INSTALL="npm install specado@alpha"
+          elif [[ "$RELEASE_TYPE" == "prerelease" ]]; then
+            NODE_INSTALL="npm install specado@beta"
+          fi
+
+          NOTES=$(cat .github/release-notes-template.md)
+          NOTES="${NOTES//\{\{version\}\}/$VERSION}"
+          NOTES="${NOTES//\{\{release_badge\}\}/$RELEASE_BADGE}"
+          NOTES="${NOTES//\{\{install_instructions_python\}\}/$PY_INSTALL}"
+          NOTES="${NOTES//\{\{install_instructions_node\}\}/$NODE_INSTALL}"
+
+          echo "$NOTES" > release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
           name: Specado ${{ needs.validate-version.outputs.version }}
           body_path: release-notes.md
-          prerelease: ${{ needs.validate-version.outputs.is_prerelease }}
+          prerelease: ${{ needs.validate-version.outputs.is_prerelease == 'true' }}
           files: |
             release-artifacts/**/*.whl
             release-artifacts/**/*.node
